@@ -93,8 +93,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · إصدار 3.1 · 26-11-2026 15:55</div>
 </div>
 <script>
+const APP_VER='3.1 · 26-11-2026 15:55';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb=supabase.createClient(SB_URL,SB_KEY);
@@ -130,7 +132,7 @@ let _dip=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_dip=e;const b=document.getElementById('installBox');if(b)b.style.display='block'});
 function showInstallHints(){const ua=navigator.userAgent||'';const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;const box=document.getElementById('installBox');if(!box||standalone)return;if(/iphone|ipad|ipod/i.test(ua)){box.style.display='block';document.getElementById('installBtn').style.display='none';document.getElementById('iosHint').style.display='block'}else if(_dip){box.style.display='block'}}
 async function doInstall(){if(!_dip)return;_dip.prompt();try{await _dip.userChoice}catch(e){}_dip=null;const b=document.getElementById('installBox');if(b)b.style.display='none'}
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{}))}
 document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('button,.icon-btn,.tabs,.btn,label,h3,h4,.chip'))e.preventDefault()});
 // ---------- AUTO REFRESH (badge + current list, on timer and on resume) ----------
 window._cur=null;
@@ -983,6 +985,20 @@ async function faAct(id,action){
 // keep pin across renders
 const _origRender=renderEmp;
 document.addEventListener('input',e=>{if(e.target.id==='pin')window._pin=e.target.value});
+
+(async function verCheck(){
+ try{
+  const t=await (await fetch('index.html?chk='+Date.now(),{cache:'no-store'})).text();
+  const m=t.match(/const APP_VER='([^']+)'/);
+  if(m&&m[1]!==APP_VER){
+   const b=document.createElement('div');
+   b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;text-align:center;padding:12px;font-weight:700;font-size:15px';
+   b.textContent='يوجد إصدار أحدث من التطبيق — اضغط هنا للتحديث';
+   b.onclick=async()=>{try{const k=await caches.keys();await Promise.all(k.map(x=>caches.delete(x)));const r=await navigator.serviceWorker.getRegistrations();await Promise.all(r.map(x=>x.update()))}catch(e){}location.replace(location.pathname+'?v='+Date.now())};
+   document.body.appendChild(b);
+  }
+ }catch(e){}
+})();
 (async function boot(){
  let cr=null;try{cr=JSON.parse(localStorage.getItem('bgc_cred')||'null')}catch(e){}
  if(!cr||!cr.c||!cr.p){renderLogin();return}
