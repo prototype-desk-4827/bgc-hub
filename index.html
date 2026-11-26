@@ -266,7 +266,7 @@ async function renderEmp(tab,focusId){
  tab=tab||'home';
  const act=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});
  const D=act.data||{requests:[],notifications:[]};D.requests=(D.requests||[]).filter(r=>!r.aa_archived);
- const ISAA=ME.role==='aa';if(ISAA){D.requests=[];if(tab!=='notif')tab='notif';}
+ const ISAA=ME.role==='aa';let AAQ=0;if(ISAA){D.requests=[];if(tab!=='notif')tab='notif';const aq=await sb.rpc('aa_queue',{p_code:ME.code,p_pin:window._pin});const qd=aq.data||{};AAQ=(qd.queue||[]).length;D.notifications=[...(D.notifications||[]),...(qd.notifications||[])].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));}
  let body='';
  if(tab==='home'){
   body=`<div class="grid4">
@@ -292,7 +292,8 @@ async function renderEmp(tab,focusId){
     ${linked?`<button class="btn ghost sm" onclick="renderEmp('mine','${n.request_id}')">عرض الطلب</button>`:''}
     <span class="mut">${new Date(n.created_at).toLocaleString('ar-EG')}</span></div>`;
   }).join(''):'';
-  body=(relHtml||notifHtml)?relHtml+notifHtml:'<p class="mut">لا إشعارات.</p>';
+  const aaHtml=AAQ?`<div class="req al-yellow"><span class="al-tag al-yellow">⏳ بانتظار المراجعة</span><p>${AAQ} إخطار بانتظار مراجعتك</p><button class="btn ghost sm" onclick="renderAA()">فتح الطلبات الواردة</button></div>`:'';
+  body=(aaHtml||relHtml||notifHtml)?aaHtml+relHtml+notifHtml:'<p class="mut">لا إشعارات.</p>';
  }
  $('app').innerHTML=`
  <div class="card"><b>${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)} · ${esc(ME.site)}</span></div>
