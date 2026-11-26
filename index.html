@@ -584,28 +584,7 @@ async function toggleStaff(code,active){
 
 // funding
 function fundingForm(){
- return `<h3 class="sec">تسجيل تحويل من المالية</h3>
- <div class="err" id="ferr"></div><div class="okmsg" id="fok"></div>
- <label>الجهة المحوِّلة</label><input id="fd_from" value="الإدارة المالية">
- <label>المبلغ (ج.م)</label><input id="fd_amount" type="number" inputmode="decimal">
- <label>التاريخ</label><input id="fd_date" type="date" value="${new Date().toISOString().slice(0,10)}">
- <label>طريقة التحويل</label><select id="fd_method"><option>كاش</option><option>فودافون كاش</option><option>تحويل بنكي</option><option>انستاباي</option></select>
- <label>رقم المحفظة / المرجع</label><input id="fd_ref">
- <label>رقم المستلم</label><input id="fd_recipient" inputmode="tel">
- <label>إثبات التحويل (صورة/مستند)</label><input id="fd_proof" type="file" accept="image/*,.pdf">
- <label>ملاحظة</label><input id="fd_note">
- <button class="btn" onclick="addFunding(this)">تسجيل التحويل</button>
- <h3 class="sec" style="margin-top:16px">التحويلات المسجلة (تجميع شهري مع الحفاظ على كل دفعة)</h3>`;
-}
-async function addFunding(btn){
- if(btn){btn.disabled=true;setTimeout(()=>btn.disabled=false,4000);}
- if(!window._fundIdem)window._fundIdem=crypto.randomUUID();
- let proof=[];
- const pf=$('fd_proof');
- if(pf&&pf.files.length)proof=await uploadFiles(pf);
- const r=await sb.rpc('funding_add',{p_code:ME.code,p_pin:window._pin,p_from_name:$('fd_from').value,p_amount:Number($('fd_amount').value||0),p_transfer_date:$('fd_date').value,p_method:$('fd_method').value,p_reference:$('fd_ref').value||null,p_recipient_number:$('fd_recipient').value||null,p_proof:proof,p_note:$('fd_note').value||null,p_idem:window._fundIdem});
- if(r.error){show('ferr','خطأ: '+r.error.message);return}
- show('fok','تم التسجيل');window._fundIdem=null;loadFunding();
+ return `<h3 class="sec">تحويلات الشؤون المالية (السلف)</h3><p class="mut">للعرض فقط. الشؤون المالية هي اللي بتسجّل التحويل وبتقفله بعد مراجعة مستندات الصرف.</p>`;
 }
 async function loadFunding(){
  const r=await sb.rpc('funding_list',{p_code:ME.code,p_pin:window._pin});
@@ -613,14 +592,9 @@ async function loadFunding(){
  const rep=await sb.rpc('aa_reports',{p_code:ME.code,p_pin:window._pin});
  const disb=(rep.data||[]).filter(x=>['paid','awaiting_fa','closed'].includes(x.status)).reduce((t,x)=>t+Number(x.paid_amount||0),0);
  const fundTot=list.reduce((t,x)=>t+Number(x.amount||0),0);
- $('fundList').innerHTML=`<div class="req" style="background:#fff"><p>إجمالي التمويل: <b>${fmtMoney(fundTot)}</b> · إجمالي المصروف: <b>${fmtMoney(disb)}</b> · المتبقي: <b style="color:${fundTot-disb<0?'#dc2626':'#16a34a'}">${fmtMoney(fundTot-disb)}</b></p></div><div id="fundMonths"></div>`;
- const months={};
- list.forEach(f=>{const m=(f.transfer_date||'').slice(0,7);(months[m]=months[m]||[]).push(f)});
- $('fundMonths').innerHTML=Object.keys(months).sort().reverse().map(m=>{
-  const rows=months[m];const tot=rows.reduce((s,f)=>s+Number(f.amount),0);
-  return `<p><b>شهر ${m}</b> — الإجمالي: <b>${fmtMoney(tot)}</b> (${rows.length} دفعة)</p>`+
-   rows.map(f=>`<div class="req"><p>${fmtMoney(f.amount)} — ${esc(f.method||'')} ${f.reference?'· مرجع '+esc(f.reference):''} ${f.recipient_number?'· المستلم '+esc(f.recipient_number):''}</p>${attLinks(f.proof)}<p class="mut">${fmtDate(f.transfer_date)} · من ${esc(f.from_name||'')} ${f.note?'· '+esc(f.note):''}</p></div>`).join('');
- }).join('')||'<p class="mut">لا تحويلات مسجلة.</p>';
+ const wd=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('ar-EG',{weekday:'long'})}catch(e){return ''}};
+ $('fundList').innerHTML=`<div class="req" style="background:#fff"><p>إجمالي السلف: <b>${fmtMoney(fundTot)}</b> · إجمالي المصروف: <b>${fmtMoney(disb)}</b> · المتبقي: <b style="color:${fundTot-disb<0?'#dc2626':'#16a34a'}">${fmtMoney(fundTot-disb)}</b></p></div>`+
+  (list.map(f=>`<div class="req"><h4>${fmtMoney(f.amount)} <span class="chip ${f.status==='open'?'c-pending':'c-closed'}">${f.status==='open'?'مفتوحة':'مقفولة'}</span></h4><p>${esc(f.method||'')}${f.recipient_number?' · إلى الرقم '+esc(f.recipient_number):''}</p><p class="mut">${wd(f.transfer_date)} ${fmtDate(f.transfer_date)}${f.note?' · '+esc(f.note):''}</p></div>`).join('')||'<p class="mut">لا تحويلات مسجلة.</p>');
 }
 
 // reports
