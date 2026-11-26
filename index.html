@@ -285,6 +285,42 @@ async function uploadFiles(input){
  for(const f of input.files){try{out.push(await fileToAtt(f))}catch(e){out.push({name:f.name,error:e.message})}}
  return out;
 }
+
+const MONEYK=k=>k==='settlement'||k==='maintenance';
+const PAYM={wallet:'محفظة',instapay:'انستاباي',bank:'تحويل بنكي',cash:'كاش بيد'};
+const payLabel=m=>PAYM[m]||m||'';
+function payoutLine(r){
+ if(!MONEYK(r.kind))return '';
+ if(!r.payout_method)return '<p style="color:#b91c1c;font-weight:700">⚠ لم تُحدَّد طريقة الاستلام</p>';
+ return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?` · <b dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`:''}</p>`;
+}
+function missingAtt(r){
+ const none=!r.attachments||!r.attachments.length;
+ return none&&(MONEYK(r.kind)||(r.kind==='leave'&&String(r.category||'').includes('مرض')));
+}
+function noAttWarn(r){return missingAtt(r)?'<p style="margin:6px 0;color:#b91c1c;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:6px 10px;font-weight:800">⚠ بدون مرفق</p>':''}
+function payoutForm(r){
+ return `<label>طريقة استلام المبلغ</label><select id="f_pm" onchange="pmChange()"><option value="">اختر...</option><option value="wallet">محفظة</option><option value="instapay">انستاباي</option><option value="bank">تحويل بنكي</option><option value="cash">كاش بيد</option></select>
+ <div id="f_pa_wrap"><label id="f_pa_l">رقم المحفظة</label><input id="f_pa" dir="ltr" inputmode="text" value="${esc(r.payout_account||'')}"><p class="mut" id="f_pa_h" style="margin:2px 0 8px"></p></div>`;
+}
+function pmChange(){
+ const m=$('f_pm').value;const w=$('f_pa_wrap');
+ if(!m||m==='cash'){w.style.display='none';return}
+ w.style.display='block';
+ const T={wallet:['رقم المحفظة (11 رقم)','01xxxxxxxxx','tel'],instapay:['عنوان إنستاباي أو رقم الموبايل','name@instapay','text'],bank:['رقم الحساب أو IBAN','EG…','text']}[m];
+ $('f_pa_l').textContent=T[0];$('f_pa').placeholder=T[1];$('f_pa').inputMode=T[2];
+}
+function payoutRead(kind){
+ if(!MONEYK(kind))return {m:null,a:null};
+ const m=$('f_pm').value;let a=($('f_pa').value||'').replace(/\s+/g,'');
+ if(!m)return {err:'اختر طريقة استلام المبلغ'};
+ if(m==='cash')return {m:'cash',a:null};
+ if(!a)return {err:'اكتب رقم أو عنوان الاستلام'};
+ if(m==='wallet'&&!/^01[0-9]{9}$/.test(a))return {err:'رقم المحفظة لازم يكون 11 رقم يبدأ بـ 01'};
+ if(m==='instapay'&&!/^(01[0-9]{9}|[A-Za-z0-9._-]+@[A-Za-z0-9]+)$/.test(a))return {err:'عنوان إنستاباي غير صحيح (مثال name@instapay أو رقم الموبايل)'};
+ if(m==='bank'){a=a.toUpperCase();if(!/^(EG[0-9]{27}|[0-9]{8,20})$/.test(a))return {err:'رقم الحساب أو الـ IBAN غير صحيح'}}
+ return {m,a};
+}
 window._attReg=window._attReg||[];
 function attIsImg(a){return (a.type&&a.type.startsWith('image/'))||(a.data&&a.data.startsWith('data:image'))}
 function attLinks(atts){
@@ -431,12 +467,14 @@ function renderForm(kind,resubmit){
   f=`<label>حتى تاريخ</label><input id="f_date" type="date" value="${r.request_date||new Date().toISOString().slice(0,10)}">
      <label>المبلغ المطلوب (ج.م)</label><input id="f_amount" type="number" inputmode="decimal" value="${r.amount||''}">
      <label>تفاصيل التسوية (الفترة، بنود الاستحقاق...)</label><textarea id="f_details" rows="3">${esc(r.details||'')}</textarea>
+     ${payoutForm(r)}
      <label>مرفقات (كشوف/مستندات)</label><input id="f_files" type="file" multiple>`;
  }else if(kind==='maintenance'){
   f=`<label>تاريخ الفاتورة/المستند</label><input id="f_date" type="date" value="${r.request_date||new Date().toISOString().slice(0,10)}">
      <label>نوع الحالة</label><select id="f_cat">${Object.entries(MCASES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
      <label>وصف الحالة والموقع</label><textarea id="f_details" rows="3" placeholder="مثال: تسريب في دورة المياه بالدور الثاني — موقع الشروق">${esc(r.details||'')}</textarea>
      <label>المبلغ (إن وُجد، ج.م)</label><input id="f_amount" type="number" inputmode="decimal" value="${r.amount||''}">
+     ${payoutForm(r)}
      <label>مرفقات (صور العطل / الفاتورة)</label><input id="f_files" type="file" multiple accept="image/*,.pdf">`;
  }else if(kind==='leave'){
   f=`<label>نوع الإجازة</label><select id="f_cat">${Object.entries(LCASES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
@@ -465,6 +503,8 @@ function renderForm(kind,resubmit){
   <p class="mut" style="margin-top:8px">إرفاق الموقع اختياري: أرفقه فقط إذا طلبته الشؤون الإدارية، ويُسجَّل حينها موقعك التقريبي لمرة واحدة مع التاريخ والوقت.</p>
  </div>`;
  window._resubmitAtts=r.attachments||null;
+ if(MONEYK(kind)){const sel=$('f_pm');sel.value=r.payout_method||'';pmChange();
+  if(!r.payout_method&&!resubmit){sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin}).then(x=>{const l=((x.data&&x.data.requests)||[]).find(q=>q.payout_method);if(l&&!$('f_pm').value){$('f_pm').value=l.payout_method;pmChange();if(l.payout_account)$('f_pa').value=l.payout_account}}).catch(()=>{})}}
 }
 function renderResubmit(r){renderForm(r.kind==='maintenance'?'maintenance':r.kind,r)}
 
@@ -482,13 +522,15 @@ async function submitReq(kind,resubmitId){
   if(kind==='leave'&&$('f_date2')&&$('f_date2').value)details='من '+($('f_date').value||'—')+' إلى '+$('f_date2').value+'\n'+details;
   const amount=$('f_amount')&&$('f_amount').value?Number($('f_amount').value):null;
   const date=$('f_date')?$('f_date').value:null;
+  const po=payoutRead(kind);
+  if(po.err){show('err',po.err);$('sendBtn').disabled=false;$('sendBtn').textContent=resubmitId?'إعادة إرسال':'إرسال الإخطار';return}
   if(!details&&!amount){show('err','اكتب التفاصيل أو المبلغ');$('sendBtn').disabled=false;$('sendBtn').textContent='إرسال الإخطار';return}
   if(!window._reqIdem)window._reqIdem=crypto.randomUUID();
   let r;
   if(resubmitId){
-   r=await sb.rpc('resubmit_request',{p_code:ME.code,p_pin:window._pin,p_request_id:resubmitId,p_details:details,p_amount:amount,p_notes:null,p_attachments:atts,p_lat:loc.lat||null,p_lng:loc.lng||null,p_loc_acc:loc.acc||null,p_loc_state:(loc.state==='granted'?'granted':null)});
+   r=await sb.rpc('resubmit_request',{p_code:ME.code,p_pin:window._pin,p_request_id:resubmitId,p_details:details,p_amount:amount,p_notes:null,p_attachments:atts,p_lat:loc.lat||null,p_lng:loc.lng||null,p_loc_acc:loc.acc||null,p_loc_state:(loc.state==='granted'?'granted':null),p_payout_method:po.m,p_payout_account:po.a});
   }else{
-   r=await sb.rpc('submit_request',{p_code:ME.code,p_pin:window._pin,p_kind:kind,p_category:catLabel,p_details:details,p_amount:amount,p_request_date:date,p_notes:null,p_lat:loc.lat||null,p_lng:loc.lng||null,p_loc_acc:loc.acc||null,p_loc_state:loc.state,p_attachments:atts,p_idem:window._reqIdem});
+   r=await sb.rpc('submit_request',{p_code:ME.code,p_pin:window._pin,p_kind:kind,p_category:catLabel,p_details:details,p_amount:amount,p_request_date:date,p_notes:null,p_lat:loc.lat||null,p_lng:loc.lng||null,p_loc_acc:loc.acc||null,p_loc_state:loc.state,p_attachments:atts,p_idem:window._reqIdem,p_payout_method:po.m,p_payout_account:po.a});
   }
   if(r.error){show('err','خطأ: '+r.error.message);$('sendBtn').disabled=false;$('sendBtn').textContent='إرسال الإخطار';return}
   window._resubmitAtts=null;window._reqIdem=null;
@@ -553,19 +595,21 @@ function aaCard(r){
   ${r.category?`<p class="mut">${esc(r.category)}</p>`:''}
   <p>${esc(r.details||'')}</p>
   ${r.amount?`<p>المبلغ: <b>${fmtMoney(r.amount)}</b></p>`:''}
-  ${attLinks(r.attachments)}
+  ${payoutLine(r)}
+  ${noAttWarn(r)}${attLinks(r.attachments)}
   <p class="mut">${new Date(r.created_at).toLocaleString('ar-EG')}${r.location_state==='granted'?` · <a style="color:var(--accent)" href="https://maps.google.com/?q=${r.lat},${r.lng}" target="_blank">موقع الإرسال</a>`:' · لم يُرفق موقع'}</p>
-  <input id="rs-${r.id}" placeholder="سبب / ملاحظة (إلزامي للإرجاع)">
+  <input id="rs-${r.id}" placeholder="سبب / ملاحظة (إلزامي للإرجاع)" value="${missingAtt(r)?'المرفق ناقص، ارفق الإيصال أو الفاتورة':''}">
   <div class="row">
    <button class="btn ok sm" onclick="aaAct('${r.id}','approve')">✅ موافقة</button>
-   <button class="btn ret sm" onclick="aaAct('${r.id}','return')">↩️ إرجاع للاستكمال</button>
+   <button class="btn ret sm" ${missingAtt(r)?'style="outline:3px solid #dc2626;outline-offset:2px;font-weight:800"':''} onclick="aaAct('${r.id}','return')">↩️ إرجاع للاستكمال</button>
    <button class="btn bad sm" onclick="aaAct('${r.id}','reject')">❌ رفض</button>
    <button class="btn ghost sm" onclick="showHistory('${r.id}')">🕓 السجل</button>
   </div><div id="hist-${r.id}"></div>
  </div>`;
 }
 async function aaAct(id,action){
- const reason=($('rs-'+id)||{}).value||'';
+ let reason=($('rs-'+id)||{}).value||'';
+ if(action!=='return'&&reason==='المرفق ناقص، ارفق الإيصال أو الفاتورة')reason='';
  const r=await sb.rpc('aa_decide',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_action:action,p_reason:reason||null,p_paid:null});
  if(r.error){alert('خطأ: '+r.error.message);return}
  renderAA('queue');
@@ -582,9 +626,10 @@ async function loadAAApproved(){
   const st=STATUS[r.status];
   return `<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip ${st[1]}">${st[0]}</span></h4>
    <p>المبلغ: <b>${fmtMoney(r.amount)}</b></p>
+   ${payoutLine(r)}
    ${r.status==='approved'?`<div style="border:1px dashed #ccc;border-radius:10px;padding:8px;margin-top:6px">
     <div class="row"><input id="pm-${r.id}" placeholder="المبلغ الفعلي" type="number" inputmode="decimal" style="width:110px"><input id="pdt-${r.id}" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
-    <div class="row"><select id="pmd-${r.id}"><option>كاش</option><option>فودافون كاش</option><option>تحويل بنكي</option><option>انستاباي</option></select><input id="prc-${r.id}" placeholder="رقم المستلم" inputmode="tel" style="width:140px"></div>
+    <div class="row"><select id="pmd-${r.id}">${[['كاش','cash'],['فودافون كاش',''],['محفظة','wallet'],['تحويل بنكي','bank'],['انستاباي','instapay']].map(o=>`<option${o[1]&&o[1]===r.payout_method?' selected':''}>${o[0]}</option>`).join('')}</select><input id="prc-${r.id}" placeholder="رقم المستلم" inputmode="tel" value="${esc(r.payout_account||'')}" style="width:140px"></div>
     <div class="row"><label class="mut" style="font-size:12px">إثبات الصرف:</label><input id="ppf-${r.id}" type="file" accept="image/*,.pdf" style="font-size:12px"></div>
     <button class="btn ok sm" id="payb-${r.id}" onclick="aaPay('${r.id}')">💸 تسجيل صرف</button></div>`
    :`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${r.paid_proof&&r.paid_proof.length?attLinks(r.paid_proof):''}<div class="row"><button class="btn warn sm" onclick="aaSendFa('${r.id}')">📤 إحالة للمراجعة المالية</button></div>`}
@@ -727,10 +772,10 @@ function renderRepTable(){
  const docAtts=(atts,rid,key)=>{window._pdfSlots=window._pdfSlots||[];let ai=0;return (atts||[]).filter(a=>a.data&&!a.data.startsWith('data:image')).map(a=>{const did='doc'+(++_di);window._docs[did]=a.data;let slot='';if(a.data.startsWith('data:application/pdf')){const sid='pdfpg-'+rid+'-'+key+(ai++);window._pdfSlots.push({sid,data:a.data,name:a.name});slot=`<div id="${sid}"><p class="mut">جارٍ تجهيز صفحات المستند للطباعة…</p></div>`}return `<a href="#" onclick="openDoc('${did}');return false">📄 ${esc(a.name)} — فتح المستند الأصلي</a>${slot}`}).join('')};
  const det=rows.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="mut">${STATUS[r.status][0]}</span></h4>
   <p>${r.amount!=null?`المبلغ: <b>${fmtMoney(r.amount)}</b> · `:''}تاريخ المستند: ${r.request_date||'—'} · تاريخ التقديم: ${new Date(r.created_at).toLocaleDateString('ar-EG')}</p>
-  ${r.paid_amount?`<p>صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>`:''}
+  ${payoutLine(r)}${r.paid_amount?`<p>صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>`:''}
   <p>${esc(r.details||'')}</p>${imgAtts(r.attachments)}${docAtts(r.attachments,r.id,'a')}${r.paid_proof&&r.paid_proof.length?'<p class="mut">إثبات الصرف:</p>'+imgAtts(r.paid_proof)+docAtts(r.paid_proof,r.id,'p'):''}</div>`).join('');
- $('repTable').innerHTML=`<p class="mut">${rows.length} طلب</p><table class="rep"><colgroup><col style="width:12%"><col style="width:13%"><col style="width:12%"><col style="width:8%"><col style="width:11%"><col style="width:13%"><col style="width:12%"><col style="width:9%"><col style="width:9%"></colgroup><tr><th>الموظف</th><th>النوع</th><th>الحالة</th><th>المبلغ</th><th>المدفوع</th><th>طريقة الصرف</th><th>رقم المستلم</th><th>تاريخ المستند</th><th>تاريخ التقديم</th></tr>`+
-  rows.map(r=>`<tr><td>${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
+ $('repTable').innerHTML=`<p class="mut">${rows.length} طلب</p><table class="rep"><colgroup><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:10%"><col style="width:9%"><col style="width:8%"></colgroup><tr><th>الموظف</th><th>النوع</th><th>الحالة</th><th>المبلغ</th><th>طريقة الاستلام</th><th>رقم/عنوان الاستلام</th><th>المدفوع</th><th>طريقة الصرف</th><th>رقم المستلم</th><th>تاريخ المستند</th><th>تاريخ التقديم</th></tr>`+
+  rows.map(r=>`<tr><td>${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${esc(payLabel(r.payout_method))}</td><td dir="ltr">${esc(r.payout_account||(r.payout_method==='cash'?'—':''))}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
   `<div class="row no-print" style="margin-top:8px"><button class="btn ghost sm" onclick="document.querySelector('.print-det').classList.toggle('show')">عرض/إخفاء التفاصيل والمرفقات</button></div>`+
   `<div class="print-det"><h3 class="sec">تفاصيل الطلبات والمرفقات</h3>${det}</div>`;
  renderPdfSlots();
@@ -766,7 +811,7 @@ async function loadReports(){
  renderRepTable();
 }
 function exportXlsx(){
- const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
+ const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':r.payout_account||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,ws,'الطلبات');XLSX.writeFile(wb,window._batchCode?('bgc-hub-'+window._batchCode+'.xlsx'):'bgc-hub-requests.xlsx');
 }
@@ -951,4 +996,4 @@ document.addEventListener('input',e=>{if(e.target.id==='pin')window._pin=e.targe
 })();
 </script>
 </body>
-</html>
+  </html>
