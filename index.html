@@ -266,6 +266,7 @@ async function renderEmp(tab,focusId){
  tab=tab||'home';
  const act=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});
  const D=act.data||{requests:[],notifications:[]};D.requests=(D.requests||[]).filter(r=>!r.aa_archived);
+ const ISAA=ME.role==='aa';if(ISAA){D.requests=[];if(tab!=='notif')tab='notif';}
  let body='';
  if(tab==='home'){
   body=`<div class="grid4">
@@ -297,8 +298,8 @@ async function renderEmp(tab,focusId){
  <div class="card"><b>${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)} · ${esc(ME.site)}</span></div>
  <div class="tabs">
   <button onclick="renderHome()">${ic('home',14)} الرئيسية</button>
-  <button class="${tab==='home'?'on':''}" onclick="renderEmp('home')">${ic('doc',14)} إخطار جديد</button>
-  <button class="${tab==='mine'?'on':''}" onclick="renderEmp('mine')">${ic('inbox',14)} إخطاراتي</button>
+  ${ISAA?'':`<button class="${tab==='home'?'on':''}" onclick="renderEmp('home')">${ic('doc',14)} إخطار جديد</button>
+  <button class="${tab==='mine'?'on':''}" onclick="renderEmp('mine')">${ic('inbox',14)} إخطاراتي</button>`}
   <button class="${tab==='notif'?'on':''}" onclick="renderEmp('notif')">${ic('bell',14)} التنبيهات${(D.requests||[]).filter(r=>r.status==='pending'||r.status==='returned').length?` <span class="badge inline">${(D.requests||[]).filter(r=>r.status==='pending'||r.status==='returned').length}</span>`:''}</button>
  </div>
  <div class="card">${body}</div>`;
