@@ -81,6 +81,9 @@ table.rep th{background:var(--card2)}
 .print-det.show{display:block}
 .print-det img.att-img{max-width:100%;max-height:340px;display:block;margin:6px 0;border:1px solid #ddd}
 h3.sec{font-size:16px;margin:6px 0 10px;color:var(--accent)}
+button,button *,.tabs,.tabs *,.icon-btn,.icon-btn *,.btn,.chip,.badge,.al-tag,label,h3,h4,.sec{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+button,.icon-btn,.btn,.tabs button{touch-action:manipulation}
+input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 </style>
 </head>
 <body>
@@ -128,6 +131,7 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_dip=e;cons
 function showInstallHints(){const ua=navigator.userAgent||'';const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;const box=document.getElementById('installBox');if(!box||standalone)return;if(/iphone|ipad|ipod/i.test(ua)){box.style.display='block';document.getElementById('installBtn').style.display='none';document.getElementById('iosHint').style.display='block'}else if(_dip){box.style.display='block'}}
 async function doInstall(){if(!_dip)return;_dip.prompt();try{await _dip.userChoice}catch(e){}_dip=null;const b=document.getElementById('installBox');if(b)b.style.display='none'}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('button,.icon-btn,.tabs,.btn,label,h3,h4,.chip'))e.preventDefault()});
 // ---------- AUTO REFRESH (badge + current list, on timer and on resume) ----------
 window._cur=null;
 ['renderHome','renderEmp','renderAA','renderFA','renderFAAlerts','renderFAArchive','renderAAArchive','renderEmpArchive'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(...a){window._cur={n,a};return f.apply(this,a)}});
