@@ -174,9 +174,10 @@ async function doLogin(){
  const r=await sb.rpc('staff_login',{p_code:$('code').value.trim(),p_pin:$('pin').value.trim()});
  if(r.error||!r.data||!r.data.length){show('err','الكود أو الرقم السري غير صحيح');return}
  ME=r.data[0]; window._role=ME.role; window._pin=$('pin').value.trim();
+ try{localStorage.setItem('bgc_cred',JSON.stringify({c:$('code').value.trim(),p:window._pin}))}catch(e){}
  renderHome();
 }
-function logout(){ME=null;renderLogin()}
+function logout(){ME=null;window._pin=null;try{localStorage.removeItem('bgc_cred')}catch(e){}renderLogin()}
 
 // ---------- HOME (4 sections, role visibility) ----------
 async function alertCount(){
@@ -824,7 +825,17 @@ async function faAct(id,action){
 // keep pin across renders
 const _origRender=renderEmp;
 document.addEventListener('input',e=>{if(e.target.id==='pin')window._pin=e.target.value});
-renderLogin();
+(async function boot(){
+ let cr=null;try{cr=JSON.parse(localStorage.getItem('bgc_cred')||'null')}catch(e){}
+ if(!cr||!cr.c||!cr.p){renderLogin();return}
+ try{
+  const r=await sb.rpc('staff_login',{p_code:cr.c,p_pin:cr.p});
+  if(r.error){renderLogin();return}
+  if(r.data&&r.data.length){ME=r.data[0];window._role=ME.role;window._pin=cr.p;renderHome();return}
+  try{localStorage.removeItem('bgc_cred')}catch(e){}
+ }catch(e){}
+ renderLogin();
+})();
 </script>
 </body>
 </html>
