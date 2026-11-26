@@ -293,6 +293,7 @@ function attLinks(atts){
 // ---------- EMPLOYEE ----------
 function alClass(n,reqs){
  const t=n.text||'';
+ if(t.startsWith('وصل'))return ['al-yellow','📥 وصل للإدارية'];
  if(t.startsWith('الشؤون المالية أعادت'))return ['al-red','↩️ أعادتها الشؤون المالية'];
  if(t.startsWith('الشؤون المالية:'))return ['al-green',ic('money',14)+' تمت المراجعة'];
  if(t.startsWith('سلفة: رفضت'))return ['al-red','❌ رفض طلب سلفة'];
@@ -361,9 +362,11 @@ async function renderEmp(tab,focusId){
  </div>
  <div class="card">${body}</div>`;
  if(tab==='notif'&&(D.notifications||[]).some(n=>n.read===false))sb.rpc('mark_notifs_read',{p_code:ME.code,p_pin:window._pin}).then(()=>{});
+ document.querySelectorAll('.autohist').forEach((e,i)=>{if(i<15)showHistory(e.id.slice(5))});
  if(focusId){const el=$('req-'+focusId);if(el){el.style.outline='2px solid var(--accent)';el.scrollIntoView({block:'center'});}}
 }
 
+const STLINE={pending:'وصل للإدارية وقيد المراجعة',approved:'وافقت الإدارية — بانتظار الصرف',returned:'الإدارية طلبت استكمالاً منك',rejected:'رفضته الإدارية',paid:'تم تسجيل الصرف — ستحوّله الإدارية للمراجعة المالية',awaiting_fa:'عند الشؤون المالية للمراجعة',closed:'راجعته الشؤون المالية وقفلته'};
 function reqCard(r,mine){
  const st=STATUS[r.status]||[r.status,'c-pending'];
  let extra='';
@@ -372,6 +375,7 @@ function reqCard(r,mine){
  if(r.status==='paid'||r.status==='awaiting_fa'||r.status==='closed')extra+=`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} بتاريخ ${fmtDate(r.paid_date)} (${esc(r.paid_method||'—')})${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${attLinks(r.paid_proof&&r.paid_proof.length?r.paid_proof.map(p=>({name:'إثبات الصرف: '+p.name,data:p.data})):null)}`;
  return `<div class="req" id="req-${r.id}">
   <h4>${KINDS[r.kind]||r.kind} <span class="chip ${st[1]}">${st[0]}</span>${r.revision_no>1?` <span class="mut">مراجعة ${r.revision_no}</span>`:''}</h4>
+  ${mine&&STLINE[r.status]?`<p style="color:var(--txt);font-weight:700;font-size:13px">${STLINE[r.status]}</p>`:''}
   ${r.category?`<p class="mut">${esc(r.category)}</p>`:''}
   <p>${esc(r.details||'')}</p>
   ${r.amount?`<p>المبلغ: <b>${fmtMoney(r.amount)}</b></p>`:''}
@@ -379,8 +383,7 @@ function reqCard(r,mine){
   ${attLinks(r.attachments)}
   ${extra}
   <p class="mut">${new Date(r.created_at).toLocaleString('ar-EG')}${r.location_state==='granted'&&r.lat?` · <a style="color:var(--accent)" href="https://maps.google.com/?q=${r.lat},${r.lng}" target="_blank">الموقع</a>`:''}</p>
-  <div class="row"><button class="btn ghost sm" onclick="showHistory('${r.id}')">🕓 السجل</button></div>
-  <div id="hist-${r.id}"></div>
+  <div id="hist-${r.id}" class="${mine?'autohist':''}"></div>
  </div>`;
 }
 
@@ -389,8 +392,8 @@ async function showHistory(id){
  const r=await sb.rpc('request_history',{p_code:ME.code,p_pin:pin,p_request_id:id});
  const el=$('hist-'+id);
  if(r.error){el.innerHTML='<p class="mut">تعذر تحميل السجل</p>';return}
- const EV={submitted:'تقديم الطلب',approve:'موافقة',reject:'رفض',return:'إرجاع للاستكمال',resubmitted:'إعادة إرسال بعد استكمال',paid:'تسجيل صرف',sent_to_fa:'إرسال للمراجعة المالية',fa_closed:'قفل مالي',fa_returned:'إعادة من المالية'};
- el.innerHTML='<div class="tl">'+r.data.map(e=>`<div>${EV[e.event]||e.event} ${e.note?`— ${esc(e.note)}`:''}<br><span class="mut">${e.actor} · ${new Date(e.at).toLocaleString('ar-EG')}</span></div>`).join('')+'</div>';
+ const EV={submitted:'وصل للإدارية',approve:'وافقت الإدارية',reject:'رفضته الإدارية',return:'الإدارية طلبت استكمالاً',resubmitted:'أعدت الإرسال بعد الاستكمال',paid:'تم تسجيل الصرف',sent_to_fa:'أُرسل للمراجعة المالية',fa_closed:'قفلته الشؤون المالية',fa_returned:'أعادته المالية للإدارية'};
+ el.innerHTML='<div class="tl">'+r.data.map(e=>`<div>${EV[e.event]||e.event} ${e.note&&['reject','return','fa_returned'].includes(e.event)?`— ${esc(e.note)}`:''}<br><span class="mut">${new Date(e.at).toLocaleString('ar-EG')}</span></div>`).join('')+'</div>';
 }
 
 // ---------- REQUEST FORM ----------
