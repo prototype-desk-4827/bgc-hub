@@ -128,11 +128,30 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_dip=e;cons
 function showInstallHints(){const ua=navigator.userAgent||'';const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;const box=document.getElementById('installBox');if(!box||standalone)return;if(/iphone|ipad|ipod/i.test(ua)){box.style.display='block';document.getElementById('installBtn').style.display='none';document.getElementById('iosHint').style.display='block'}else if(_dip){box.style.display='block'}}
 async function doInstall(){if(!_dip)return;_dip.prompt();try{await _dip.userChoice}catch(e){}_dip=null;const b=document.getElementById('installBox');if(b)b.style.display='none'}
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
-setInterval(async()=>{
- if(!ME||document.hidden)return;
+// ---------- AUTO REFRESH (badge + current list, on timer and on resume) ----------
+window._cur=null;
+['renderHome','renderEmp','renderAA','renderFA','renderFAAlerts','renderFAArchive','renderAAArchive','renderEmpArchive'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(...a){window._cur={n,a};return f.apply(this,a)}});
+['renderForm','renderResubmit','renderLogin'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(...a){window._cur=null;return f.apply(this,a)}});
+let _rfBusy=false,_rfLast=0;
+async function refreshBadge(){
  const t=document.querySelector(".icon-btn[onclick=\"openSection('alerts')\"]");if(!t)return;
- try{const n=await alertCount();let b=t.querySelector('.badge');if(n>0){if(!b){b=document.createElement('span');b.className='badge';t.prepend(b)}b.textContent=n}else if(b){b.remove()}}catch(e){}
-},60000);
+ const n=await alertCount();let b=t.querySelector('.badge');if(n>0){if(!b){b=document.createElement('span');b.className='badge';t.prepend(b)}b.textContent=n}else if(b){b.remove()}
+}
+function _hasDraft(){const app=document.getElementById('app');if(!app)return false;return [...app.querySelectorAll('input,textarea,select')].some(e=>{if(e.type==='hidden'||e.type==='button'||e.type==='submit')return false;if(e.type==='file')return e.files&&e.files.length>0;if(e.type==='checkbox'||e.type==='radio')return false;return (e.value||'').trim()!==''&&e.defaultValue!==e.value})||document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)}
+async function refreshNow(force){
+ if(!ME||document.hidden||_rfBusy)return;
+ if(!force&&Date.now()-_rfLast<4000)return;
+ _rfBusy=true;_rfLast=Date.now();
+ try{
+  if(window._cur&&!_hasDraft()){const y=window.scrollY;const c=window._cur;await window[c.n](...c.a);window.scrollTo(0,y)}
+  else await refreshBadge();
+ }catch(e){}
+ _rfBusy=false;
+}
+setInterval(()=>refreshNow(true),60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshNow(true)});
+window.addEventListener('focus',()=>refreshNow(false));
+window.addEventListener('pageshow',()=>refreshNow(false));
 // ---------- LOGIN ----------
 function renderLogin(){
  $('app').innerHTML=`
