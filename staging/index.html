@@ -192,7 +192,7 @@ async function doLogin(){
  try{localStorage.setItem(CRED_KEY,JSON.stringify({c:c,p:ME.token,r:ME.role,t:Date.now()}))}catch(e){}
  renderHome();
 }
-function logout(){try{if(ME&&window._pin)sb0.rpc('staff_logout',{p_code:ME.code,p_token:window._pin});}catch(e){}try{if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(s=>{if(s)sb.rpc('push_unsubscribe',{p_endpoint:s.endpoint})}).catch(()=>{})}catch(e){}ME=null;window._pin=null;try{localStorage.removeItem(CRED_KEY)}catch(e){}renderLogin()}
+function logout(){try{if(ME&&window._pin)sb0.rpc('staff_logout',{p_code:ME.code,p_token:window._pin}).then(()=>{});}catch(e){}try{if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(s=>{if(s)sb.rpc('push_unsubscribe',{p_endpoint:s.endpoint})}).catch(()=>{})}catch(e){}ME=null;window._pin=null;try{localStorage.removeItem(CRED_KEY)}catch(e){}renderLogin()}
 
 // ---------- HOME (4 sections, role visibility) ----------
 async function alertCount(){
@@ -1034,4 +1034,4 @@ document.addEventListener('input',e=>{if(e.target.id==='pin')window._pin=e.targe
 })();
 </script>
 </body>
-</html>
+  </html>
