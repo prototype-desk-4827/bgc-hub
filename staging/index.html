@@ -68,6 +68,7 @@ label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
 .tl{border-right:2px solid #ccc;padding-right:12px;margin:8px 0}
 .tl div{margin-bottom:8px;font-size:13px}.tl .mut{font-size:11px}
 .att a{color:var(--accent);font-size:12px;display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-all;direction:ltr;text-align:right;unicode-bidi:plaintext}
+.badge.wait{background:#d97706}
 .stgbar{position:sticky;top:0;z-index:9999;background:#f59e0b;color:#000;text-align:center;font-size:13px;font-weight:700;padding:6px}
 .demo{background:#fff;border:1px dashed #ccc;border-radius:12px;padding:10px;font-size:12px;color:var(--mut);margin-top:12px}
 #repTable{overflow-x:auto}
@@ -94,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.0-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.1-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.0-stg · 27-11-2026';
+const APP_VER='4.1-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -152,8 +153,8 @@ window._cur=null;
 ['renderForm','renderResubmit','renderLogin'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(...a){window._cur=null;return f.apply(this,a)}});
 let _rfBusy=false,_rfLast=0;
 async function refreshBadge(){
- const t=document.querySelector(".icon-btn[onclick=\"openSection('alerts')\"]");if(!t)return;
- const n=await alertCount();let b=t.querySelector('.badge');if(n>0){if(!b){b=document.createElement('span');b.className='badge';t.prepend(b)}b.textContent=n}else if(b){b.remove()}
+ const c=await alertCounts();const ws=ME.role==='aa'?'aa':ME.role==='fa'?'fa':'requests';
+ _setBadge('alerts',c.unread,'');_setBadge(ws,c.wait,'wait');
 }
 function _hasDraft(){const app=document.getElementById('app');if(!app)return false;return [...app.querySelectorAll('input,textarea,select')].some(e=>{if(e.type==='hidden'||e.type==='button'||e.type==='submit')return false;if(e.type==='file')return e.files&&e.files.length>0;if(e.type==='checkbox'||e.type==='radio')return false;return (e.value||'').trim()!==''&&e.defaultValue!==e.value})||document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)}
 async function refreshNow(force){
@@ -195,16 +196,18 @@ async function doLogin(){
 function logout(){try{if(ME&&window._pin)sb0.rpc('staff_logout',{p_code:ME.code,p_token:window._pin}).then(()=>{});}catch(e){}try{if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription()).then(s=>{if(s)sb.rpc('push_unsubscribe',{p_endpoint:s.endpoint})}).catch(()=>{})}catch(e){}ME=null;window._pin=null;try{localStorage.removeItem(CRED_KEY)}catch(e){}renderLogin()}
 
 // ---------- HOME (4 sections, role visibility) ----------
-async function alertCount(){
+async function alertCounts(){
  try{
-  if(ME.role==='aa'){const q=await sb.rpc('aa_queue',{p_code:ME.code,p_pin:window._pin});const ac=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});return ((q.data&&q.data.queue)||[]).length+(((ac.data&&ac.data.notifications)||[]).filter(n=>n.read===false).length);}
-  if(ME.role==='fa'){const ac=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});return ((ac.data&&ac.data.notifications)||[]).filter(n=>n.read===false).length;}
-  const act=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});
-  return ((act.data&&act.data.requests)||[]).filter(r=>r.status==='pending'||r.status==='returned').length;
- }catch(e){return 0;}
+  if(ME.role==='aa'){const q=await sb.rpc('aa_queue',{p_code:ME.code,p_pin:window._pin});const ac=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});return {wait:((q.data&&q.data.queue)||[]).length,unread:((ac.data&&ac.data.notifications)||[]).filter(n=>n.read===false).length};}
+  if(ME.role==='fa'){const q=await sb.rpc('fa_queue',{p_code:ME.code,p_pin:window._pin});const ac=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});return {wait:((q.data&&q.data.queue)||[]).length,unread:((ac.data&&ac.data.notifications)||[]).filter(n=>n.read===false).length};}
+  const act=await sb.rpc('my_activity',{p_code:ME.code,p_pin:window._pin});const d=act.data||{};
+  return {wait:(d.requests||[]).filter(r=>r.status==='pending'||r.status==='returned').length,unread:(d.notifications||[]).filter(n=>n.read===false).length};
+ }catch(e){return {wait:0,unread:0};}
 }
+async function alertCount(){const c=await alertCounts();return c.unread}
+function _setBadge(sec,n,cls){const t=document.querySelector(".icon-btn[onclick=\"openSection('"+sec+"')\"]");if(!t)return;let b=t.querySelector('.badge');if(n>0){if(!b){b=document.createElement('span');b.className='badge'+(cls?' '+cls:'');t.prepend(b)}b.textContent=n}else if(b){b.remove()}}
 async function renderHome(){
- const nAlerts=await alertCount();
+ const _c=await alertCounts();const nAlerts=_c.unread,nWait=_c.wait;
  const secs=[
   {k:'requests',icn:'doc',t:'الإخطارات',show:ME.role!=='fa'&&ME.role!=='aa'},
   {k:'aa',icn:'users',t:'الشؤون الإدارية',show:ME.role==='aa'},
@@ -216,9 +219,10 @@ async function renderHome(){
  <div class="card head-row"><span><b>${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)} · ${esc(ME.site)}</span></span>
   <button class="btn ghost sm" style="margin-inline-start:auto;flex:none" onclick="logout()">خروج</button></div>
  <div class="grid4">
-  ${secs.filter(s=>s.show).map(s=>`<div class="icon-btn" onclick="openSection('${s.k}')">${s.k==='alerts'&&nAlerts?`<span class="badge">${nAlerts}</span>`:''}<span class="em">${ic(s.icn,30)}</span><span class="t">${s.t}</span></div>`).join('')}
+  ${secs.filter(s=>s.show).map(s=>`<div class="icon-btn" onclick="openSection('${s.k}')">${s.k==='alerts'&&nAlerts?`<span class="badge">${nAlerts}</span>`:''}${(s.k==='aa'||s.k==='fa'||s.k==='requests')&&nWait?`<span class="badge wait">${nWait}</span>`:''}<span class="em">${ic(s.icn,30)}</span><span class="t">${s.t}</span></div>`).join('')}
  </div>
  <div id="pushCard"></div>
+ <p class="mut" style="margin-top:10px;font-size:12px"><span style="color:#d97706;font-weight:700">● برتقالي</span> = بانتظار قرارك &nbsp; <span style="color:var(--accent);font-weight:700">● أحمر</span> = تنبيهات جديدة غير مقروءة</p>
  <p class="mut" style="margin-top:10px">أي صرف لازم يسبقه إخطار من هنا بكل التفاصيل والمستندات الخاصة بالحالة.</p>`;
  pushInit();
 }
@@ -304,10 +308,12 @@ async function uploadFiles(input){
 const MONEYK=k=>k==='settlement'||k==='maintenance';
 const PAYM={wallet:'محفظة',instapay:'انستاباي',bank:'تحويل بنكي',cash:'كاش بيد'};
 const payLabel=m=>PAYM[m]||m||'';
+const maskNum=v=>{v=String(v||'');return v.length>4?'••••'+v.slice(-4):v};
+async function revealPayout(id,btn){const r=await sb.rpc('reveal_payout',{p_code:ME.code,p_pin:window._pin,p_request_id:id});if(r.error){alert('خطأ: '+r.error.message);return}const el=btn.parentNode.querySelector('b.pn');el.textContent=r.data;btn.remove();}
 function payoutLine(r){
  if(!MONEYK(r.kind))return '';
  if(!r.payout_method)return '<p style="color:#b91c1c;font-weight:700">⚠ لم تُحدَّد طريقة الاستلام</p>';
- return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?` · <b dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`:''}</p>`;
+ return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?(ME&&ME.role!=='employee'?` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(maskNum(r.payout_account))}</b> <button class="btn ghost sm" onclick="revealPayout('${r.id}',this)">👁 إظهار الرقم</button>`:` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`):''}</p>`;
 }
 function missingAtt(r){
  const none=!r.attachments||!r.attachments.length;
@@ -459,11 +465,13 @@ function reqCard(r,mine){
   ${r.request_date?`<p class="mut">تاريخ المستند: ${esc(r.request_date)}</p>`:''}
   ${attLinks(r.attachments)}
   ${extra}
+  ${mine&&(r.status==='paid'||r.status==='awaiting_fa'||r.status==='closed')&&MONEYK(r.kind)?(r.received_state?`<p style="font-weight:700;color:${r.received_state==='received'?'#15803d':'#b91c1c'}">${r.received_state==='received'?'✔ أكدت الاستلام':'✖ أبلغت أنك لم تستلم'}</p>`:`<div class="row"><button class="btn ok sm" onclick="confirmRcv('${r.id}',true)">استلمت المبلغ</button><button class="btn ghost sm" onclick="confirmRcv('${r.id}',false)">لم يصلني</button></div>`):''}
   <p class="mut">${new Date(r.created_at).toLocaleString('ar-EG')}${r.location_state==='granted'&&r.lat?` · <a style="color:var(--accent)" href="https://maps.google.com/?q=${r.lat},${r.lng}" target="_blank">الموقع</a>`:''}</p>
   <div id="hist-${r.id}" class="${mine?'autohist':''}"></div>
  </div>`;
 }
 
+async function confirmRcv(id,ok){let note=null;if(!ok){note=prompt('اكتب ملاحظة (مثلًا: لم يصلني أي مبلغ):');if(!note||!note.trim())return}else if(!confirm('تأكيد أنك استلمت المبلغ؟'))return;const r=await sb.rpc('confirm_receipt',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_ok:ok,p_note:note});if(r.error){alert('خطأ: '+r.error.message);return}renderEmp(window._cur&&window._cur.a&&window._cur.a[0]);}
 async function showHistory(id){
  const pin=window._pin;
  const r=await sb.rpc('request_history',{p_code:ME.code,p_pin:pin,p_request_id:id});
@@ -567,6 +575,7 @@ async function renderAA(tab){
    body+='<div class="err" style="display:block">تعذر تحميل الطلبات (ليس معناه أن البيانات اختفت): '+esc(q.error.message||'خطأ اتصال')+'</div><div class="row"><button class="btn sm" onclick="renderAA(\'queue\')">إعادة المحاولة</button></div>';
   }else{
    const list=(q.data&&q.data.queue)||[];
+   if(list.length>1)body+=`<input id="qsearch" placeholder="🔍 بحث بالاسم أو المبلغ أو التفاصيل أو التاريخ" oninput="qFilter(this.value)" style="margin-bottom:8px">`;
    body+=list.length?list.map(r=>aaCard(r)).join(''):'<p class="mut">لا طلبات بانتظار المراجعة حاليًا. الطلبات التي عالجتها موجودة أدناه وفي التقارير.</p>';
    const rp=await sb.rpc('aa_reports',{p_code:ME.code,p_pin:window._pin});
    if(!rp.error&&rp.data){
@@ -596,7 +605,7 @@ async function renderAA(tab){
   <button class="${tab==='rep'?'on':''}" onclick="renderAA('rep')">${ic('chart',14)} التقارير</button>
  </div>
  <div class="card">${body}</div>`;
- if(tab==='staff'){loadStaff();loadAttempts();}
+ if(tab==='staff'){loadStaff();loadAttempts();loadSecLog();}
  if(tab==='funding')loadFunding();
  if(tab==='rep')loadReports();
  if(tab==='queue')loadAAApproved();
@@ -617,14 +626,16 @@ function aaCard(r){
   <div class="row">
    <button class="btn ok sm" onclick="aaAct('${r.id}','approve')">✅ موافقة</button>
    <button class="btn ret sm" ${missingAtt(r)?'style="outline:3px solid #dc2626;outline-offset:2px;font-weight:800"':''} onclick="aaAct('${r.id}','return')">↩️ إرجاع للاستكمال</button>
-   <button class="btn bad sm" onclick="aaAct('${r.id}','reject')">❌ رفض</button>
+   <button class="btn ghost sm" style="margin-inline-start:auto;color:#b91c1c;border-color:#fca5a5" onclick="aaAct('${r.id}','reject')">رفض…</button>
    <button class="btn ghost sm" onclick="showHistory('${r.id}')">🕓 السجل</button>
   </div><div id="hist-${r.id}"></div>
  </div>`;
 }
+function qFilter(v){v=(v||'').trim().toLowerCase();document.querySelectorAll('#app .card .req[id^="req-"],#app .card .req').forEach(e=>{if(e.querySelector('[id^=rs-]'))e.style.display=(!v||e.textContent.toLowerCase().includes(v))?'':'none'})}
 async function aaAct(id,action){
  let reason=($('rs-'+id)||{}).value||'';
  if(action!=='return'&&reason==='المرفق ناقص، ارفق الإيصال أو الفاتورة')reason='';
+ if(action==='reject'){if(!reason.trim()){alert('اكتب سبب الرفض في خانة السبب أولًا');return}if(!confirm('تأكيد الرفض؟ الرفض نهائي ولا صرف بعده.\nالسبب: '+reason))return}
  const r=await sb.rpc('aa_decide',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_action:action,p_reason:reason||null,p_paid:null});
  if(r.error){alert('خطأ: '+r.error.message);return}
  renderAA('queue');
@@ -716,6 +727,12 @@ async function rotateStaff(code,name){
  if(r.error){alert('خطأ: '+r.error.message);return}
  printSlip(code,name,r.data);
 }
+async function loadSecLog(){
+ const r=await sb.rpc('aa_security_log',{p_code:ME.code,p_pin:window._pin});const el=$('attLog');if(!el||r.error)return;
+ const N={reopen_advance:'إعادة فتح سلفة',reopen_sheet:'إعادة فتح شيت',reopen_archive:'إعادة عملية من الأرشيف',reveal_payout:'كشف رقم استلام كامل',rotate_code:'توليد كود جديد',activate:'تفعيل كود',deactivate:'إيقاف كود',add_staff:'إضافة موظف'};
+ const rows=(r.data||[]).slice(0,25);
+ el.insertAdjacentHTML('beforeend',`<div class="card"><h3 class="sec">السجل الأمني (آخر العمليات الحساسة)</h3>`+(rows.length?`<div style="max-height:200px;overflow:auto;font-size:13px">${rows.map(x=>`<div>${esc(N[x.event]||x.event)} · ${esc(x.actor)}${x.note?' — '+esc(x.note):''} · ${new Date(x.at).toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'})}</div>`).join('')}</div>`:'<p class="mut">لا عمليات بعد.</p>')+`</div>`);
+}
 async function loadAttempts(){
  const r=await sb.rpc('aa_login_attempts',{p_code:ME.code,p_pin:window._pin});const d=r.data||{};
  const el=$('attLog');if(!el)return;const f=d.failed||[],l=d.locked||[];
@@ -796,7 +813,7 @@ function renderRepTable(){
   ${payoutLine(r)}${r.paid_amount?`<p>صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>`:''}
   <p>${esc(r.details||'')}</p>${imgAtts(r.attachments)}${docAtts(r.attachments,r.id,'a')}${r.paid_proof&&r.paid_proof.length?'<p class="mut">إثبات الصرف:</p>'+imgAtts(r.paid_proof)+docAtts(r.paid_proof,r.id,'p'):''}</div>`).join('');
  $('repTable').innerHTML=`<p class="mut">${rows.length} طلب</p><table class="rep"><colgroup><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:10%"><col style="width:9%"><col style="width:8%"></colgroup><tr><th>الموظف</th><th>النوع</th><th>الحالة</th><th>المبلغ</th><th>طريقة الاستلام</th><th>رقم/عنوان الاستلام</th><th>المدفوع</th><th>طريقة الصرف</th><th>رقم المستلم</th><th>تاريخ المستند</th><th>تاريخ التقديم</th></tr>`+
-  rows.map(r=>`<tr><td>${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${esc(payLabel(r.payout_method))}</td><td dir="ltr">${esc(r.payout_account||(r.payout_method==='cash'?'—':''))}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
+  rows.map(r=>`<tr><td>${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${esc(payLabel(r.payout_method))}</td><td dir="ltr">${esc(r.payout_account?maskNum(r.payout_account):(r.payout_method==='cash'?'—':''))}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
   `<div class="row no-print" style="margin-top:8px"><button class="btn ghost sm" onclick="document.querySelector('.print-det').classList.toggle('show')">عرض/إخفاء التفاصيل والمرفقات</button></div>`+
   `<div class="print-det"><h3 class="sec">تفاصيل الطلبات والمرفقات</h3>${det}</div>`;
  renderPdfSlots();
@@ -832,7 +849,7 @@ async function loadReports(){
  renderRepTable();
 }
 function exportXlsx(){
- const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':r.payout_account||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
+ const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':(r.payout_account?maskNum(r.payout_account):'')||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,ws,'الطلبات');XLSX.writeFile(wb,window._batchCode?('bgc-hub-'+window._batchCode+'.xlsx'):'bgc-hub-requests.xlsx');
 }
@@ -934,8 +951,8 @@ async function renderFAArchive(q){
  <h3 class="sec">الشيتات المراجعة (${bs.length})</h3>${bh}<h3 class="sec">السلف المقفولة (${as.length})</h3>${ah}</div>`;
  const el=$('arq');if(el&&q){el.focus();el.setSelectionRange(q.length,q.length)}
 }
-async function restoreBatch(id){const r=await sb.rpc('fa_batch_restore',{p_code:ME.code,p_pin:window._pin,p_batch:id});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
-async function reopenAdvance(id){const r=await sb.rpc('fa_advance_reopen',{p_code:ME.code,p_pin:window._pin,p_id:id});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
+async function restoreBatch(id){const why=prompt('سبب إعادة فتح الشيت (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_batch_restore',{p_code:ME.code,p_pin:window._pin,p_batch:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
+async function reopenAdvance(id){const why=prompt('سبب إعادة فتح السلفة (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_advance_reopen',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
 async function renderEmpArchive(){
  const r=await sb.rpc('emp_archive_list',{p_code:ME.code,p_pin:window._pin});
  const list=r.data||[];
@@ -959,7 +976,7 @@ async function renderAAArchive(q){
  <div class="card"><h3 class="sec">${ic('archive',16)} الأرشيف (${list.length})</h3><input id="arq" value="${esc(q)}" placeholder="ابحث باسم المهندس أو العامل" oninput="clearTimeout(window._arT);window._arT=setTimeout(()=>renderAAArchive(document.getElementById('arq').value),350)">${html}</div>`;
  const el=$('arq');if(el&&q){el.focus();el.setSelectionRange(q.length,q.length)}
 }
-async function restoreAAItem(id){const r=await sb.rpc('aa_archive_restore',{p_code:ME.code,p_pin:window._pin,p_id:id});if(r.error){alert('خطأ: '+r.error.message);return}renderAAArchive();}
+async function restoreAAItem(id){const why=prompt('سبب إعادة العملية للعمل (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('aa_archive_restore',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderAAArchive();}
 async function advDecide(id,action){
  const note=($('ad-'+id)||{}).value||'';
  if(action==='reject'&&!note.trim()){alert('اكتب سبب الرفض');return}
