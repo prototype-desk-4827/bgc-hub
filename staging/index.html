@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.1-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.2-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.1-stg · 27-11-2026';
+const APP_VER='4.2-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -313,7 +313,7 @@ async function revealPayout(id,btn){const r=await sb.rpc('reveal_payout',{p_code
 function payoutLine(r){
  if(!MONEYK(r.kind))return '';
  if(!r.payout_method)return '<p style="color:#b91c1c;font-weight:700">⚠ لم تُحدَّد طريقة الاستلام</p>';
- return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?(ME&&ME.role!=='employee'?` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(maskNum(r.payout_account))}</b> <button class="btn ghost sm" onclick="revealPayout('${r.id}',this)">👁 إظهار الرقم</button>`:` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`):''}</p>`;
+ return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?(ME&&ME.role!=='employee'?` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(ME.role==='aa'?r.payout_account:maskNum(r.payout_account))}</b>`:` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`):''}</p>`;
 }
 function missingAtt(r){
  const none=!r.attachments||!r.attachments.length;
@@ -646,7 +646,7 @@ async function loadAAApproved(){
  const approved=(rep.data||[]).filter(r=>(r.status==='approved'||r.status==='paid')&&FIN(r.kind));
  const nonfin=(rep.data||[]).filter(r=>r.status==='approved'&&!FIN(r.kind));
  let html='';
- if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p></div>`).join('');
+ if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p><div class="row"><button class="btn ret sm" onclick="aaUndo('${r.id}')">↩️ إلغاء الموافقة</button></div></div>`).join('');
  if(!approved.length){if(html)$('app').querySelector('.card:last-child').insertAdjacentHTML('beforeend',html);return;}
  html+='<h3 class="sec">بانتظار الصرف / الإحالة للمالية</h3>'+approved.map(r=>{
   const st=STATUS[r.status];
@@ -658,7 +658,8 @@ async function loadAAApproved(){
     <div class="row"><select id="pmd-${r.id}">${[['كاش','cash'],['فودافون كاش',''],['محفظة','wallet'],['تحويل بنكي','bank'],['انستاباي','instapay']].map(o=>`<option${o[1]&&o[1]===r.payout_method?' selected':''}>${o[0]}</option>`).join('')}</select><input id="prc-${r.id}" placeholder="رقم المستلم" inputmode="tel" value="${esc(r.payout_account||'')}" style="width:140px"></div>
     <div class="row"><label class="mut" style="font-size:12px">إثبات الصرف:</label><input id="ppf-${r.id}" type="file" accept="image/*,.pdf" style="font-size:12px"></div>
     <button class="btn ok sm" id="payb-${r.id}" onclick="aaPay('${r.id}')">💸 تسجيل صرف</button></div>`
-   :`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${r.paid_proof&&r.paid_proof.length?attLinks(r.paid_proof):''}<div class="row"><button class="btn warn sm" onclick="aaSendFa('${r.id}')">📤 إحالة للمراجعة المالية</button></div>`}
+   :`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${r.paid_proof&&r.paid_proof.length?attLinks(r.paid_proof):''}<p class="mut">سيدخل في الشيت القادم للشئون المالية</p>`}
+   ${r.status==='approved'||r.status==='paid'?'':''}${r.status==='approved'?`<div class="row"><button class="btn ret sm" onclick="aaUndo('${r.id}')">↩️ إلغاء الموافقة</button></div>`:''}
   </div>`;
  }).join('');
  $('app').querySelector('.card:last-child').insertAdjacentHTML('beforeend',html);
@@ -675,6 +676,13 @@ async function aaPay(id){
  const r=await sb.rpc('pay_request',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_amount:amt,p_method:method,p_date:dt,p_recipient:recip,p_proof:proof});
  if(r.error){alert('خطأ: '+r.error.message);return}
  renderAA('queue');
+}
+async function aaUndo(id){
+ const why=prompt('سبب إلغاء الموافقة (إلزامي — سيظهر للموظف):');
+ if(why===null)return; if(!why.trim()){alert('اكتب السبب');return}
+ const r=await sb.rpc('aa_undo_approval',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_reason:why.trim()});
+ if(r.error){alert('خطأ: '+r.error.message);return}
+ alert('تم إلغاء الموافقة وأُخطر الموظف، والطلب عاد قيد المراجعة');renderAA('queue');
 }
 async function aaSendFa(id){
  const r=await sb.rpc('aa_send_fa',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_note:null});
@@ -873,20 +881,10 @@ async function renderFA(){
  const arRej=ars.filter(a=>a.status==='rejected').slice(0,5).map(advReqHtml).join('');
  const batchHtml=_work.length?_work.map(([b,i])=>`<div class="req"><h4><span class="chip c-pending" style="direction:ltr">${esc(b.code||'')}</span> ${new Date(b.created_at).toLocaleDateString('ar-EG')} — ${b.n} عملية · ${fmtMoney(b.total)} <span class="chip ${BST[b.status][1]}">${BST[b.status][0]}</span></h4>
   ${b.status==='returned'&&b.note?`<p class="mut">سبب الإرجاع: ${esc(b.note)}</p>`:''}
+  ${b.advance_amount!=null?`<p>السلفة: <b>${fmtMoney(b.advance_amount)}</b> · الإجمالي: <b>${fmtMoney(b.total)}</b> · ${Number(b.total)===Number(b.advance_amount)?'<span style="color:#166534;font-weight:800">مطابق ✅</span>':'<span style="color:#b91c1c;font-weight:800">الفرق '+(Number(b.total)-Number(b.advance_amount))+' ج.م ⚠ راجع الإدارية</span>'}</p>`:'<p class="mut">لا توجد سلفة مرتبطة بهذا الشيت</p>'}
   <div class="row"><button class="btn ghost sm" onclick="openBatch(${i})">فتح Excel / PDF</button></div>
-  ${b.status==='pending'?`<input id="bn-${b.id}" placeholder="سبب الإرجاع (إلزامي عند الإرجاع)"><div class="row"><button class="btn ok sm" onclick="reviewBatch('${b.id}','reviewed')">تمت المراجعة</button><button class="btn ret sm" onclick="reviewBatch('${b.id}','return')">إرجاع</button></div>`:''}</div>`).join(''):'<p class="mut">لا شيتات للمراجعة بعد.</p>';
- const single=list.length?`<h3 class="sec">طلبات مفردة بانتظار المراجعة (${list.length})</h3>`+list.map(r=>`
-  <div class="req">
-   <h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-awaiting_fa">بانتظار المراجعة المالية</span></h4>
-   <p>${esc(r.details||'')}</p>
-   <p>المبلغ المطلوب: ${fmtMoney(r.amount)} · المدفوع: <b>${fmtMoney(r.paid_amount)}</b> (${esc(r.paid_method||'—')} · ${fmtDate(r.paid_date)})${r.paid_recipient?` · المستلم <b>${esc(r.paid_recipient)}</b>`:''}</p>
-   ${attLinks(r.attachments)}
-   ${r.paid_proof&&r.paid_proof.length?'<p class="mut">إثبات الصرف:</p>'+attLinks(r.paid_proof):''}
-   <input id="fn-${r.id}" placeholder="ملاحظة المراجعة (إلزامية عند الإعادة)">
-   <div class="row">
-    <button class="btn ok sm" onclick="faAct('${r.id}','close')">🔒 مراجعة وقفل</button>
-    <button class="btn ret sm" onclick="faAct('${r.id}','return')">↩️ إعادة للإدارية</button>
-   </div></div>`).join(''):'';
+  ${b.status==='pending'?`<input id="bn-${b.id}" placeholder="سبب الإرجاع (إلزامي عند الإرجاع)"><div class="row">${b.advance_amount!=null&&Number(b.total)!==Number(b.advance_amount)?'':`<button class="btn ok sm" onclick="reviewBatch('${b.id}','reviewed')">تمت المراجعة</button>`}<button class="btn ret sm" onclick="reviewBatch('${b.id}','return')">إرجاع</button></div>`:''}</div>`).join(''):'<p class="mut">لا شيتات للمراجعة بعد.</p>';
+ const single='';
  $('app').innerHTML=`
  <div class="card"><b>${ic('money',16)} ${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)}</span></div>
  <div class="tabs"><button onclick="renderHome()">${ic('home',14)} الرئيسية</button></div>
@@ -897,6 +895,16 @@ async function renderFA(){
 }
 
 async function aaSendClosed(btn){
+ try{
+  const [fl,rp]=await Promise.all([sb.rpc('funding_list',{p_code:ME.code,p_pin:window._pin}),sb.rpc('aa_reports',{p_code:ME.code,p_pin:window._pin})]);
+  const un=(rp.data||[]).filter(x=>(x.status==='paid'||x.status==='closed')&&!x.fin_sent_at&&MONEYK(x.kind));
+  const tot=un.reduce((a,x)=>a+Number(x.paid_amount||0),0);
+  const adv=((fl.data||[]).filter(a=>a.status==='open').sort((a,b)=>String(a.transfer_date).localeCompare(String(b.transfer_date))))[0];
+  let msg='سيُرسل شيت بـ '+un.length+' عملية، إجمالي '+tot+' ج.م.';
+  if(adv){const d=tot-Number(adv.amount);msg+='\nالسلفة المفتوحة: '+adv.amount+' ج.م'+(d===0?' (مطابقة ✅)':'\nالفرق: '+d+' ج.م — الشئون المالية لن تقفل الشيت قبل المراجعة معك');}
+  else msg+='\nلا توجد سلفة مفتوحة.';
+  if(!confirm(msg+'\nإرسال؟'))return;
+ }catch(e){}
  btn.disabled=true;const m=$('sendClosedMsg');
  const r=await sb.rpc('aa_send_closed',{p_code:ME.code,p_pin:window._pin});
  if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(r.error.message)+'</div>';btn.disabled=false;return}
