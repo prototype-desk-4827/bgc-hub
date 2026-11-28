@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.6-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.7-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.6-stg · 27-11-2026';
+const APP_VER='4.7-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -129,6 +129,7 @@ const IC={
 IC.archive='<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/>';
 function ic(n,sz){return `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle">${IC[n]||''}</svg>`}
 const STATUS={pending:['قيد المراجعة','c-pending'],approved:['تمت الموافقة','c-approved'],rejected:['مرفوض','c-rejected'],returned:['مطلوب استكمال','c-returned'],paid:['تم الصرف','c-paid'],awaiting_fa:['بانتظار المراجعة المالية','c-awaiting_fa'],closed:['مقفول ماليًا','c-closed']};
+const LEAVE_ENABLED=false; // الإجازات وجدول العمل متوقفة مؤقتًا — غيّرها إلى true لإعادتها (وفعّل feature_flags في القاعدة)
 const KINDS={settlement:'تسوية مستحقات',maintenance:'صيانة',leave:'إجازة',schedule:'جدول العمل'};
 const MCASES={invoice_ready:'فاتورة جاهزة للصرف',needs_funding:'تحتاج تمويل قبل الإصلاح',self_paid:'دفعت من جيبي وأطلب الاسترداد'};
 const LCASES={annual:'سنوية',casual:'عارضة',sick:'مرضية'};
@@ -419,8 +420,8 @@ async function renderEmp(tab,focusId){
   body=`<div class="grid4">
    <div class="icon-btn" onclick="renderForm('settlement')"><span class="em">${ic('money',30)}</span><span class="t">تسوية مستحقات</span></div>
    <div class="icon-btn" onclick="renderForm('maintenance')"><span class="em">${ic('wrench',30)}</span><span class="t">صيانة</span></div>
-   <div class="icon-btn" onclick="renderForm('leave')"><span class="em">${ic('cal',30)}</span><span class="t">إجازات</span></div>
-   <div class="icon-btn" onclick="renderForm('schedule')"><span class="em">🕒</span><span class="t">جدول العمل</span></div>
+   ${LEAVE_ENABLED?`<div class="icon-btn" onclick="renderForm('leave')"><span class="em">${ic('cal',30)}</span><span class="t">إجازات</span></div>
+   <div class="icon-btn" onclick="renderForm('schedule')"><span class="em">🕒</span><span class="t">جدول العمل</span></div>`:''}
   </div>`;
  }else if(tab==='mine'){
   body=D.requests.length?D.requests.map(r=>reqCard(r,true)).join(''):'<p class="mut">لا توجد طلبات بعد.</p>';
@@ -490,6 +491,7 @@ async function showHistory(id){
 
 // ---------- REQUEST FORM ----------
 function renderForm(kind,resubmit){
+ if(!LEAVE_ENABLED&&(kind==='leave'||kind==='schedule'))return;
  const r=resubmit||{};
  const titles={settlement:'تسوية مستحقات',maintenance:'إخطار صيانة',leave:'طلب إجازة',schedule:'طلب جدول عمل'};
  let f='';
@@ -596,11 +598,11 @@ async function renderAA(tab){
   body=staffForm()+`<div id="attLog" style="margin-top:12px"></div><div id="staffList" style="margin-top:12px"></div>`;
  }else{
   body=`<div class="row no-print" style="align-items:flex-end">
-   <div><label class="mut" style="font-size:12px">النوع</label><select id="rep_kind" onchange="renderRepTable()"><option value="">الكل</option><option value="settlement">تسوية مستحقات</option><option value="maintenance">صيانة</option><option value="leave">إجازات</option><option value="schedule">جدول العمل</option></select></div>
+   <div><label class="mut" style="font-size:12px">النوع</label><select id="rep_kind" onchange="renderRepTable()"><option value="">الكل</option><option value="settlement">تسوية مستحقات</option><option value="maintenance">صيانة</option>${LEAVE_ENABLED?'<option value="leave">إجازات</option><option value="schedule">جدول العمل</option>':''}</select></div>
    <div><label class="mut" style="font-size:12px">من</label><input id="rep_from" type="date" onchange="renderRepTable()"></div>
    <div><label class="mut" style="font-size:12px">إلى</label><input id="rep_to" type="date" onchange="renderRepTable()"></div>
   </div>
-  <div class="row no-print"><button class="btn sm" onclick="exportXlsx()">⬇️ Excel الصرف (الطلبات المالية فقط)</button><button class="btn ghost sm" onclick="exportXlsx('hr')">⬇️ Excel الإجازات والجداول (للإدارية فقط، لا يُرسل للمالية)</button><button class="btn ghost sm" onclick="window.print()">🖨️ طباعة / PDF</button></div><div id="repTable" style="margin-top:10px"></div>`;
+  <div class="row no-print"><button class="btn sm" onclick="exportXlsx()">⬇️ Excel الصرف (الطلبات المالية فقط)</button>${LEAVE_ENABLED?`<button class="btn ghost sm" onclick="exportXlsx('hr')">⬇️ Excel الإجازات والجداول (للإدارية فقط، لا يُرسل للمالية)</button>`:''}<button class="btn ghost sm" onclick="window.print()">🖨️ طباعة / PDF</button></div><div id="repTable" style="margin-top:10px"></div>`;
  }
  $('app').innerHTML=`
  <div class="card"><b>${ic('users',16)} ${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)}</span></div>
@@ -813,6 +815,7 @@ async function loadFunding(){
 // reports
 let _rep=[];
 function repFiltered(){
+ _rep=_rep.filter(r=>LEAVE_ENABLED||MONEYK(r.kind));
  const k=($('rep_kind')||{}).value||'';
  const f=($('rep_from')||{}).value||'';
  const t=($('rep_to')||{}).value||'';
