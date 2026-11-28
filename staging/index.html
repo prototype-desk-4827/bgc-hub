@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.4-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.5-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.4-stg · 27-11-2026';
+const APP_VER='4.5-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -865,12 +865,14 @@ async function loadReports(){
  _rep=(r.data||[]).filter(x=>!x.aa_archived);
  renderRepTable();
 }
-function exportXlsx(){
+function buildXlsx(){
  const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':(r.payout_account?maskNum(r.payout_account):'')||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
- if(window._batchCode){const tot=rows.reduce((t,x)=>t+Number(x['المدفوع']||0),0);rows.push({});rows.push({'الموظف':'الإجمالي','المدفوع':tot});if(window._batchAdv!=null){rows.push({'الموظف':'قيمة السلفة','المدفوع':Number(window._batchAdv)});rows.push({'الموظف':'الفرق','المدفوع':tot-Number(window._batchAdv)});}}
+ const tot=rows.reduce((t,x)=>t+Number(x['المدفوع']||0),0);rows.push({});rows.push({'الموظف':'إجمالي المنصرف','المدفوع':tot});
+ if(window._batchCode&&window._batchAdv!=null){const ad=Number(window._batchAdv),df=tot-ad;rows.push({'الموظف':'قيمة السلفة','المدفوع':ad});rows.push({'الموظف':'الفرق (المنصرف - السلفة)','المدفوع':df,'النوع':df===0?'مطابق':'لا يطابق السلفة'});}
  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb,ws,'الطلبات');XLSX.writeFile(wb,window._batchCode?('bgc-hub-'+window._batchCode+'.xlsx'):'bgc-hub-requests.xlsx');
+ XLSX.utils.book_append_sheet(wb,ws,'الطلبات');return wb;
 }
+function exportXlsx(){XLSX.writeFile(buildXlsx(),window._batchCode?('bgc-hub-'+window._batchCode+'.xlsx'):'bgc-hub-requests.xlsx');}
 
 // ---------- FA ----------
 async function renderFA(){
