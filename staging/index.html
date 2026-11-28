@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.8-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.9-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.8-stg · 27-11-2026';
+const APP_VER='4.9-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -315,6 +315,7 @@ const ERRAR=[[/invalid code or secret|^invalid$/i,'الكود أو الرقم ا
 function errAr(m){m=String(m||'');if(/[\u0600-\u06FF]/.test(m))return m;for(const [re,t] of ERRAR)if(re.test(m))return t;return 'حدث خطأ غير متوقع، حاول مرة أخرى'}
 function flagField(el,msg){if(!el)return;el.style.border='2px solid #dc2626';el.style.background='#fef2f2';el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});let n=el.nextElementSibling;if(!n||!n.classList.contains('flagmsg')){n=document.createElement('div');n.className='flagmsg';n.style.cssText='color:#b91c1c;font-weight:800;font-size:13px;margin:4px 0';el.insertAdjacentElement('afterend',n)}n.textContent=msg;el.addEventListener('input',()=>{el.style.border='';el.style.background='';n.remove()},{once:true})}
 function undoBox(id){return `<div style="border:2px solid #fca5a5;background:#fef2f2;border-radius:10px;padding:8px;margin-top:8px"><p style="margin:0 0 6px;font-weight:800;color:#b91c1c">اعتمدتها بالخطأ؟</p><input id="un-${id}" placeholder="سبب إلغاء الموافقة (إلزامي، يظهر للموظف)"><button class="btn ret sm" style="margin-top:6px;width:100%;font-weight:800" onclick="aaUndo('${id}')">↩️ إلغاء الموافقة وإرجاعها للمراجعة</button></div>`}
+function rnTag(r){return r&&r.req_no?`<span class="chip" dir="ltr" style="background:#e5e7eb;color:#111;font-weight:800">#${r.req_no}</span>`:''}
 function copyTxt(btn){const v=btn.dataset.v||'';const done=()=>{const o=btn.textContent;btn.textContent='✅ تم النسخ';setTimeout(()=>btn.textContent=o,1500)};
  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(v).then(done,()=>fb())}else fb();
  function fb(){const t=document.createElement('textarea');t.value=v;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){prompt('انسخ الرقم:',v)}t.remove()}}
@@ -465,7 +466,7 @@ function reqCard(r,mine){
   <div class="row"><button class="btn ret sm" onclick='renderResubmit(${JSON.stringify(r)})'>✏️ استكمال وإعادة إرسال</button></div>`;
  if(r.status==='paid'||r.status==='awaiting_fa'||r.status==='closed')extra+=`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} بتاريخ ${fmtDate(r.paid_date)} (${esc(r.paid_method||'—')})${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${attLinks(r.paid_proof&&r.paid_proof.length?r.paid_proof.map(p=>({name:'إثبات الصرف: '+p.name,data:p.data})):null)}`;
  return `<div class="req" id="req-${r.id}">
-  <h4>${KINDS[r.kind]||r.kind} <span class="chip ${st[1]}">${st[0]}</span>${r.revision_no>1?` <span class="mut">مراجعة ${r.revision_no}</span>`:''}</h4>
+  <h4>${rnTag(r)} ${KINDS[r.kind]||r.kind} <span class="chip ${st[1]}">${st[0]}</span>${r.revision_no>1?` <span class="mut">مراجعة ${r.revision_no}</span>`:''}</h4>
   ${mine&&STLINE[r.status]?`<p style="color:var(--txt);font-weight:700;font-size:13px">${STLINE[r.status]}</p>`:''}
   ${r.category?`<p class="mut">${esc(r.category)}</p>`:''}
   <p>${esc(r.details||'')}</p>
@@ -589,7 +590,7 @@ async function renderAA(tab){
    const rp=await sb.rpc('aa_reports',{p_code:ME.code,p_pin:window._pin});
    if(!rp.error&&rp.data){
     const done=rp.data.filter(r=>r.status!=='pending'&&!r.aa_archived&&!((r.status==='approved'||r.status==='paid')&&MONEYK(r.kind))).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-    body+='<h3 class="sec">كل الطلبات الأخرى حسب الحالة ('+done.length+')</h3>'+(done.length?done.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]||''} <span class="chip ${(STATUS[r.status]||['',''])[1]}">${(STATUS[r.status]||[r.status])[0]}</span></h4><p class="mut">${esc((r.details||'').slice(0,80))} ${r.amount!=null?'— '+r.amount:''} — ${(r.created_at||'').slice(0,10)}</p></div>`).join(''):'<p class="mut">لا شيء بعد.</p>');
+    body+='<h3 class="sec">كل الطلبات الأخرى حسب الحالة ('+done.length+')</h3>'+(done.length?done.map(r=>`<div class="req"><h4>${rnTag(r)} ${esc(r.employee_name)} — ${KINDS[r.kind]||''} <span class="chip ${(STATUS[r.status]||['',''])[1]}">${(STATUS[r.status]||[r.status])[0]}</span></h4><p class="mut">${esc((r.details||'').slice(0,80))} ${r.amount!=null?'— '+r.amount:''} — ${(r.created_at||'').slice(0,10)}</p></div>`).join(''):'<p class="mut">لا شيء بعد.</p>');
    }
   }
  }else if(tab==='funding'){
@@ -623,7 +624,7 @@ async function renderAA(tab){
 function aaCard(r){
  const st=STATUS[r.status];
  return `<div class="req">
-  <h4>${esc(r.employee_name)} <span class="mut">${esc(r.job_title)} · ${esc(r.site)}</span></h4>
+  <h4>${rnTag(r)} ${esc(r.employee_name)} <span class="mut">${esc(r.job_title)} · ${esc(r.site)}</span></h4>
   <p><b>${KINDS[r.kind]}</b> <span class="chip ${st[1]}">${st[0]}</span>${r.revision_no>1?` <span class="chip c-returned">مراجعة ${r.revision_no}</span>`:''}</p>
   ${r.category?`<p class="mut">${esc(r.category)}</p>`:''}
   <p>${esc(r.details||'')}</p>
@@ -656,11 +657,11 @@ async function loadAAApproved(){
  const approved=(rep.data||[]).filter(r=>(r.status==='approved'||r.status==='paid')&&FIN(r.kind));
  const nonfin=(rep.data||[]).filter(r=>r.status==='approved'&&!FIN(r.kind));
  let html='';
- if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p>${undoBox(r.id)}</div>`).join('');
+ if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${rnTag(r)} ${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p>${undoBox(r.id)}</div>`).join('');
  if(!approved.length){if(html)$('app').querySelector('.card:last-child').insertAdjacentHTML('beforeend',html);return;}
  html+='<h3 class="sec">بانتظار الصرف / الإحالة للمالية</h3>'+approved.map(r=>{
   const st=STATUS[r.status];
-  return `<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip ${st[1]}">${st[0]}</span></h4>
+  return `<div class="req"><h4>${rnTag(r)} ${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip ${st[1]}">${st[0]}</span></h4>
    <p>المبلغ: <b>${fmtMoney(r.amount)}</b></p>
    ${payoutLine(r)}
    ${r.status==='approved'?`<div style="border:1px dashed #ccc;border-radius:10px;padding:8px;margin-top:6px">
@@ -828,12 +829,12 @@ function renderRepTable(){
  window._docs={};window._pdfSlots=[];let _di=0;
  const imgAtts=atts=>(atts||[]).filter(a=>a.data&&a.data.startsWith('data:image')).map(a=>`<img class="att-img" src="${a.data}" alt="${esc(a.name)}">`).join('');
  const docAtts=(atts,rid,key)=>{window._pdfSlots=window._pdfSlots||[];let ai=0;return (atts||[]).filter(a=>a.data&&!a.data.startsWith('data:image')).map(a=>{const did='doc'+(++_di);window._docs[did]=a.data;let slot='';if(a.data.startsWith('data:application/pdf')){const sid='pdfpg-'+rid+'-'+key+(ai++);window._pdfSlots.push({sid,data:a.data,name:a.name});slot=`<div id="${sid}"><p class="mut">جارٍ تجهيز صفحات المستند للطباعة…</p></div>`}return `<a href="#" onclick="openDoc('${did}');return false">📄 ${esc(a.name)} — فتح المستند الأصلي</a>${slot}`}).join('')};
- const det=rows.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="mut">${STATUS[r.status][0]}</span></h4>
+ const det=rows.map(r=>`<div class="req"><h4>${rnTag(r)} ${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="mut">${STATUS[r.status][0]}</span></h4>
   <p>${r.amount!=null?`المبلغ: <b>${fmtMoney(r.amount)}</b> · `:''}تاريخ المستند: ${r.request_date||'—'} · تاريخ التقديم: ${new Date(r.created_at).toLocaleDateString('ar-EG')}</p>
   ${payoutLine(r)}${r.paid_amount?`<p>صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>`:''}
   <p>${esc(r.details||'')}</p>${imgAtts(r.attachments)}${docAtts(r.attachments,r.id,'a')}${r.paid_proof&&r.paid_proof.length?'<p class="mut">إثبات الصرف:</p>'+imgAtts(r.paid_proof)+docAtts(r.paid_proof,r.id,'p'):''}</div>`).join('');
  $('repTable').innerHTML=`<p class="mut">${rows.length} طلب</p><table class="rep"><colgroup><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:7%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:10%"><col style="width:9%"><col style="width:8%"></colgroup><tr><th>الموظف</th><th>النوع</th><th>الحالة</th><th>المبلغ</th><th>طريقة الاستلام</th><th>رقم/عنوان الاستلام</th><th>المدفوع</th><th>طريقة الصرف</th><th>رقم المستلم</th><th>تاريخ المستند</th><th>تاريخ التقديم</th></tr>`+
-  rows.map(r=>`<tr><td>${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${esc(payLabel(r.payout_method))}</td><td dir="ltr">${esc(r.payout_account?maskNum(r.payout_account):(r.payout_method==='cash'?'—':''))}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
+  rows.map(r=>`<tr><td>${r.req_no?'#'+r.req_no+' ':''}${esc(r.employee_name)}</td><td>${KINDS[r.kind]}</td><td>${STATUS[r.status][0]}</td><td>${r.amount??''}</td><td>${esc(payLabel(r.payout_method))}</td><td dir="ltr">${esc(r.payout_account?maskNum(r.payout_account):(r.payout_method==='cash'?'—':''))}</td><td>${r.paid_amount??''}</td><td>${esc(r.paid_method||'')}</td><td>${esc(r.paid_recipient||'')}</td><td>${r.request_date||''}</td><td>${(r.created_at||'').slice(0,10)}</td></tr>`).join('')+'</table>'+
   `<div class="row no-print" style="margin-top:8px"><button class="btn ghost sm" onclick="document.querySelector('.print-det').classList.toggle('show')">عرض/إخفاء التفاصيل والمرفقات</button></div>`+
   `<div class="print-det"><h3 class="sec">تفاصيل الطلبات والمرفقات</h3>${det}</div>`;
  renderPdfSlots();
@@ -869,9 +870,9 @@ async function loadReports(){
  renderRepTable();
 }
 function buildXlsx(mode){
- if(mode==='hr'){const hr=repFiltered().filter(r=>!MONEYK(r.kind)).map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'التصنيف':r.category||'','الحالة':STATUS[r.status][0],'تاريخ الطلب':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details||''}));
+ if(mode==='hr'){const hr=repFiltered().filter(r=>!MONEYK(r.kind)).map(r=>({'رقم الطلب':r.req_no,'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'التصنيف':r.category||'','الحالة':STATUS[r.status][0],'تاريخ الطلب':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details||''}));
   const ws=XLSX.utils.json_to_sheet(hr);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'إجازات وجداول');return wb}
- const rows=repFiltered().filter(r=>MONEYK(r.kind)).map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':(r.payout_account?maskNum(r.payout_account):'')||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
+ const rows=repFiltered().filter(r=>MONEYK(r.kind)).map(r=>({'رقم الطلب':r.req_no,'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':(r.payout_account?maskNum(r.payout_account):'')||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
  const tot=rows.reduce((t,x)=>t+Number(x['المدفوع']||0),0);rows.push({});rows.push({'الموظف':'إجمالي المنصرف','المدفوع':tot});
  if(window._batchCode&&window._batchAdv!=null){const ad=Number(window._batchAdv),df=tot-ad;rows.push({'الموظف':'قيمة السلفة','المدفوع':ad});rows.push({'الموظف':'الفرق (المنصرف - السلفة)','المدفوع':df,'النوع':df===0?'مطابق':'لا يطابق السلفة'});}
  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
@@ -993,7 +994,7 @@ async function renderAAArchive(q){
  const r=await sb.rpc('aa_archive_list',{p_code:ME.code,p_pin:window._pin});
  const all=r.data||[];const nq=_norm(q.trim());
  const list=all.filter(x=>!nq||_norm(x.employee_name).includes(nq));
- const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(errAr(r.error.message))+'</div>':(list.length?list.map(x=>`<div class="req"><h4>${esc(x.employee_name)} <span class="mut">${esc(x.job_title)} · ${esc(x.site)}</span></h4>
+ const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(errAr(r.error.message))+'</div>':(list.length?list.map(x=>`<div class="req"><h4>${rnTag(x)} ${esc(x.employee_name)} <span class="mut">${esc(x.job_title)} · ${esc(x.site)}</span></h4>
   <p><b>${KINDS[x.kind]||''}</b> <span class="chip c-closed">مقفولة</span>${x.sheet_code?` <span class="chip c-pending" style="direction:ltr">${esc(x.sheet_code)}</span>`:''}</p>
   ${x.category?`<p class="mut">${esc(x.category)}</p>`:''}<p>${esc(x.details||'')}</p>${x.amount?`<p>المبلغ: <b>${fmtMoney(x.amount)}</b></p>`:''}${x.paid_amount?`<p>صُرف: ${fmtMoney(x.paid_amount)} · ${esc(x.paid_method||'')} · ${fmtDate(x.paid_date)}</p>`:''}
   ${attLinks(x.attachments)}<p class="mut">قُدّم في ${new Date(x.created_at).toLocaleString('ar-EG')}</p>
