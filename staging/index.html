@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.3-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.4-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.3-stg · 27-11-2026';
+const APP_VER='4.4-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -309,7 +309,11 @@ const MONEYK=k=>k==='settlement'||k==='maintenance';
 const PAYM={wallet:'محفظة',instapay:'انستاباي',bank:'تحويل بنكي',cash:'كاش بيد'};
 const payLabel=m=>PAYM[m]||m||'';
 const maskNum=v=>{v=String(v||'');return v.length>4?'••••'+v.slice(-4):v};
-async function revealPayout(id,btn){const r=await sb.rpc('reveal_payout',{p_code:ME.code,p_pin:window._pin,p_request_id:id});if(r.error){alert('خطأ: '+r.error.message);return}const el=btn.parentNode.querySelector('b.pn');el.textContent=r.data;btn.remove();}
+async function revealPayout(id,btn){const r=await sb.rpc('reveal_payout',{p_code:ME.code,p_pin:window._pin,p_request_id:id});if(r.error){alert('خطأ: '+errAr(r.error.message));return}const el=btn.parentNode.querySelector('b.pn');el.textContent=r.data;btn.remove();}
+const ERRAR=[[/invalid code or secret|^invalid$/i,'الكود أو الرقم السري غير صحيح'],[/too many failed/i,'محاولات خاطئة كثيرة، حاول بعد 15 دقيقة'],[/employee id already exists/i,'كود الموظف موجود بالفعل'],[/employee not found/i,'الموظف غير موجود'],[/not an (AA|FA) account/i,'هذا الحساب غير مخوّل لهذا الإجراء'],[/not your request/i,'هذا الطلب ليس طلبك'],[/only approved requests can be paid/i,'لا يمكن تسجيل الصرف إلا بعد الموافقة على الطلب'],[/only returned requests can be resubmitted/i,'إعادة الإرسال متاحة فقط للطلبات المطلوب استكمالها'],[/not awaiting financial review/i,'الطلب ليس بانتظار المراجعة المالية'],[/request not found/i,'الطلب غير موجود'],[/request not pending/i,'الطلب لم يعد قيد المراجعة (ربما تم البت فيه). حدّث الصفحة'],[/requires a (note|reason)/i,'اكتب السبب أولًا'],[/bad action/i,'إجراء غير صحيح'],[/not allowed/i,'غير مسموح لك بهذا الإجراء'],[/duplicate key/i,'تعذر الحفظ، حدّث الصفحة وحاول مرة أخرى'],[/failed to fetch|network|load failed/i,'تعذر الاتصال بالإنترنت، تأكد من الشبكة وحاول مرة أخرى']];
+function errAr(m){m=String(m||'');if(/[\u0600-\u06FF]/.test(m))return m;for(const [re,t] of ERRAR)if(re.test(m))return t;return 'حدث خطأ غير متوقع، حاول مرة أخرى'}
+function flagField(el,msg){if(!el)return;el.style.border='2px solid #dc2626';el.style.background='#fef2f2';el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});let n=el.nextElementSibling;if(!n||!n.classList.contains('flagmsg')){n=document.createElement('div');n.className='flagmsg';n.style.cssText='color:#b91c1c;font-weight:800;font-size:13px;margin:4px 0';el.insertAdjacentElement('afterend',n)}n.textContent=msg;el.addEventListener('input',()=>{el.style.border='';el.style.background='';n.remove()},{once:true})}
+function undoBox(id){return `<div style="border:2px solid #fca5a5;background:#fef2f2;border-radius:10px;padding:8px;margin-top:8px"><p style="margin:0 0 6px;font-weight:800;color:#b91c1c">اعتمدتها بالخطأ؟</p><input id="un-${id}" placeholder="سبب إلغاء الموافقة (إلزامي، يظهر للموظف)"><button class="btn ret sm" style="margin-top:6px;width:100%;font-weight:800" onclick="aaUndo('${id}')">↩️ إلغاء الموافقة وإرجاعها للمراجعة</button></div>`}
 function copyTxt(btn){const v=btn.dataset.v||'';const done=()=>{const o=btn.textContent;btn.textContent='✅ تم النسخ';setTimeout(()=>btn.textContent=o,1500)};
  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(v).then(done,()=>fb())}else fb();
  function fb(){const t=document.createElement('textarea');t.value=v;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){prompt('انسخ الرقم:',v)}t.remove()}}
@@ -474,7 +478,7 @@ function reqCard(r,mine){
  </div>`;
 }
 
-async function confirmRcv(id,ok){let note=null;if(!ok){note=prompt('اكتب ملاحظة (مثلًا: لم يصلني أي مبلغ):');if(!note||!note.trim())return}else if(!confirm('تأكيد أنك استلمت المبلغ؟'))return;const r=await sb.rpc('confirm_receipt',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_ok:ok,p_note:note});if(r.error){alert('خطأ: '+r.error.message);return}renderEmp(window._cur&&window._cur.a&&window._cur.a[0]);}
+async function confirmRcv(id,ok){let note=null;if(!ok){note=prompt('اكتب ملاحظة (مثلًا: لم يصلني أي مبلغ):');if(!note||!note.trim())return}else if(!confirm('تأكيد أنك استلمت المبلغ؟'))return;const r=await sb.rpc('confirm_receipt',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_ok:ok,p_note:note});if(r.error){alert('خطأ: '+errAr(r.error.message));return}renderEmp(window._cur&&window._cur.a&&window._cur.a[0]);}
 async function showHistory(id){
  const pin=window._pin;
  const r=await sb.rpc('request_history',{p_code:ME.code,p_pin:pin,p_request_id:id});
@@ -558,7 +562,7 @@ async function submitReq(kind,resubmitId){
   }else{
    r=await sb.rpc('submit_request',{p_code:ME.code,p_pin:window._pin,p_kind:kind,p_category:catLabel,p_details:details,p_amount:amount,p_request_date:date,p_notes:null,p_lat:loc.lat||null,p_lng:loc.lng||null,p_loc_acc:loc.acc||null,p_loc_state:loc.state,p_attachments:atts,p_idem:window._reqIdem,p_payout_method:po.m,p_payout_account:po.a});
   }
-  if(r.error){show('err','خطأ: '+r.error.message);$('sendBtn').disabled=false;$('sendBtn').textContent='إرسال الإخطار';return}
+  if(r.error){show('err','خطأ: '+errAr(r.error.message));$('sendBtn').disabled=false;$('sendBtn').textContent='إرسال الإخطار';return}
   window._resubmitAtts=null;window._reqIdem=null;
   renderEmp('mine');
  }catch(e){show('err','خطأ: '+e.message);$('sendBtn').disabled=false;$('sendBtn').textContent='إرسال الإخطار'}
@@ -575,7 +579,7 @@ async function renderAA(tab){
   let q=await sb.rpc('aa_queue',{p_code:ME.code,p_pin:window._pin});
   if(q.error){await new Promise(r=>setTimeout(r,800));q=await sb.rpc('aa_queue',{p_code:ME.code,p_pin:window._pin});}
   if(q.error){
-   body+='<div class="err" style="display:block">تعذر تحميل الطلبات (ليس معناه أن البيانات اختفت): '+esc(q.error.message||'خطأ اتصال')+'</div><div class="row"><button class="btn sm" onclick="renderAA(\'queue\')">إعادة المحاولة</button></div>';
+   body+='<div class="err" style="display:block">تعذر تحميل الطلبات (ليس معناه أن البيانات اختفت): '+esc(errAr(q.error.message))+'</div><div class="row"><button class="btn sm" onclick="renderAA(\'queue\')">إعادة المحاولة</button></div>';
   }else{
    const list=(q.data&&q.data.queue)||[];
    if(list.length>1)body+=`<input id="qsearch" placeholder="🔍 بحث بالاسم أو المبلغ أو التفاصيل أو التاريخ" oninput="qFilter(this.value)" style="margin-bottom:8px">`;
@@ -638,9 +642,10 @@ function qFilter(v){v=(v||'').trim().toLowerCase();document.querySelectorAll('#a
 async function aaAct(id,action){
  let reason=($('rs-'+id)||{}).value||'';
  if(action!=='return'&&reason==='المرفق ناقص، ارفق الإيصال أو الفاتورة')reason='';
- if(action==='reject'){if(!reason.trim()){alert('اكتب سبب الرفض في خانة السبب أولًا');return}if(!confirm('تأكيد الرفض؟ الرفض نهائي ولا صرف بعده.\nالسبب: '+reason))return}
+ if((action==='reject'||action==='return')&&!reason.trim()){flagField($('rs-'+id),action==='reject'?'اكتب سبب الرفض هنا أولًا':'اكتب سبب الإرجاع هنا أولًا');return}
+ if(action==='reject'){if(!confirm('تأكيد الرفض؟ الرفض نهائي ولا صرف بعده.\nالسبب: '+reason))return}
  const r=await sb.rpc('aa_decide',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_action:action,p_reason:reason||null,p_paid:null});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderAA('queue');
 }
 async function loadAAApproved(){
@@ -649,7 +654,7 @@ async function loadAAApproved(){
  const approved=(rep.data||[]).filter(r=>(r.status==='approved'||r.status==='paid')&&FIN(r.kind));
  const nonfin=(rep.data||[]).filter(r=>r.status==='approved'&&!FIN(r.kind));
  let html='';
- if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p><div class="row"><button class="btn ret sm" onclick="aaUndo('${r.id}')">↩️ إلغاء الموافقة</button></div></div>`).join('');
+ if(nonfin.length)html+='<h3 class="sec">موافقات نهائية — لا صرف مطلوب</h3>'+nonfin.map(r=>`<div class="req"><h4>${esc(r.employee_name)} — ${KINDS[r.kind]} <span class="chip c-approved">موافقة نهائية</span></h4><p class="mut">${esc(r.details||'')}</p>${undoBox(r.id)}</div>`).join('');
  if(!approved.length){if(html)$('app').querySelector('.card:last-child').insertAdjacentHTML('beforeend',html);return;}
  html+='<h3 class="sec">بانتظار الصرف / الإحالة للمالية</h3>'+approved.map(r=>{
   const st=STATUS[r.status];
@@ -662,7 +667,7 @@ async function loadAAApproved(){
     <div class="row"><label class="mut" style="font-size:12px">إثبات الصرف:</label><input id="ppf-${r.id}" type="file" accept="image/*,.pdf" style="font-size:12px"></div>
     <button class="btn ok sm" id="payb-${r.id}" onclick="aaPay('${r.id}')">💸 تسجيل صرف</button></div>`
    :`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${r.paid_proof&&r.paid_proof.length?attLinks(r.paid_proof):''}<p class="mut">سيدخل في الشيت القادم للشئون المالية</p>`}
-   ${r.status==='approved'||r.status==='paid'?'':''}${r.status==='approved'?`<div class="row"><button class="btn ret sm" onclick="aaUndo('${r.id}')">↩️ إلغاء الموافقة</button></div>`:''}
+   ${r.status==='approved'||r.status==='paid'?'':''}${r.status==='approved'?undoBox(r.id):''}
   </div>`;
  }).join('');
  $('app').querySelector('.card:last-child').insertAdjacentHTML('beforeend',html);
@@ -677,19 +682,20 @@ async function aaPay(id){
  const pf=$('ppf-'+id);
  if(pf&&pf.files.length)proof=await uploadFiles(pf);
  const r=await sb.rpc('pay_request',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_amount:amt,p_method:method,p_date:dt,p_recipient:recip,p_proof:proof});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderAA('queue');
 }
 async function aaUndo(id){
- const why=prompt('سبب إلغاء الموافقة (إلزامي — سيظهر للموظف):');
- if(why===null)return; if(!why.trim()){alert('اكتب السبب');return}
- const r=await sb.rpc('aa_undo_approval',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_reason:why.trim()});
- if(r.error){alert('خطأ: '+r.error.message);return}
- alert('تم إلغاء الموافقة وأُخطر الموظف، والطلب عاد قيد المراجعة');renderAA('queue');
+ const el=$('un-'+id);const why=(el&&el.value||'').trim();
+ if(!why){flagField(el,'اكتب سبب إلغاء الموافقة أولًا (سيظهر للموظف)');return}
+ if(!confirm('إلغاء الموافقة وإرجاع الطلب قيد المراجعة؟ سيصل الموظف إشعار بذلك.'))return;
+ const r=await sb.rpc('aa_undo_approval',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_reason:why});
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
+ alert('تم إلغاء الموافقة وأُخطر الموظف، والطلب عاد قيد المراجعة. ستجده الآن في «الطلبات الواردة» وتقدر توافق عليه من جديد.');renderAA('queue');
 }
 async function aaSendFa(id){
  const r=await sb.rpc('aa_send_fa',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_note:null});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderAA('queue');
 }
 
@@ -721,7 +727,7 @@ async function addStaff(){
  const job=(eng?'مهندس — ':'عامل — ')+qual;
  const site=eng?qual:'';
  const r=await sb.rpc('staff_add',{p_code:ME.code,p_pin:window._pin,p_new_code:$('st_code').value.trim(),p_name:$('st_name').value.trim(),p_job_title:job,p_site:site,p_phone:$('st_phone').value.trim()});
- if(r.error){show('serr','خطأ: '+r.error.message);return}
+ if(r.error){show('serr','خطأ: '+errAr(r.error.message));return}
  show('sok','تمت إضافة الموظف');printSlip($('st_code').value.trim(),$('st_name').value.trim(),r.data);loadStaff();
 }
 function printSlip(code,name,secret){
@@ -735,7 +741,7 @@ function printSlip(code,name,secret){
 async function rotateStaff(code,name){
  if(!confirm('توليد كود دخول جديد لـ '+name+'؟ الكود القديم هيتلغي فورًا.'))return;
  const r=await sb.rpc('staff_rotate',{p_code:ME.code,p_pin:window._pin,p_target:code});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  printSlip(code,name,r.data);
 }
 async function loadSecLog(){
@@ -759,7 +765,7 @@ async function loadStaff(){
 }
 async function toggleStaff(code,active){
  const r=await sb.rpc('staff_set_active',{p_code:ME.code,p_pin:window._pin,p_target:code,p_active:active});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  loadStaff();
 }
 
@@ -781,7 +787,7 @@ async function aaAdvSend(btn){
  btn.disabled=true;if(!window._aaAdvIdem)window._aaAdvIdem=crypto.randomUUID();
  const r=await sb.rpc('aa_adv_request',{p_code:ME.code,p_pin:window._pin,p_amount:amt,p_reason:$('aadv_reason').value.trim(),p_details:$('aadv_det').value.trim()||null,p_idem:window._aaAdvIdem});
  btn.disabled=false;
- if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(r.error.message)+'</div>';return}
+ if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(errAr(r.error.message))+'</div>';return}
  window._aaAdvIdem=null;
  m.innerHTML='<div style="background:#dcfce7;color:#166534;padding:8px;border-radius:8px;margin-top:8px">وصل الطلب للشؤون المالية وبانتظار ردها</div>';
  $('aadv_amt').value='';$('aadv_reason').value='';$('aadv_det').value='';loadFunding();
@@ -911,7 +917,7 @@ async function aaSendClosed(btn){
  }catch(e){}
  btn.disabled=true;const m=$('sendClosedMsg');
  const r=await sb.rpc('aa_send_closed',{p_code:ME.code,p_pin:window._pin});
- if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(r.error.message)+'</div>';btn.disabled=false;return}
+ if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(errAr(r.error.message))+'</div>';btn.disabled=false;return}
  m.innerHTML='<div style="background:#dcfce7;color:#166534;padding:8px;border-radius:8px;margin-top:8px">تم التحويل للشئون المالية: '+r.data.n+' عملية مقفولة، إجمالي '+fmtMoney(r.data.total)+'</div>';
  setTimeout(()=>renderAA('queue'),2500);
 }
@@ -942,7 +948,7 @@ async function sendAdvance(btn){
  btn.disabled=true;
  if(!window._advIdem)window._advIdem=crypto.randomUUID();
  const r=await sb.rpc('fa_advance_add',{p_code:ME.code,p_pin:window._pin,p_amount:amt,p_method:$('adv_method').value,p_number:$('adv_num').value.trim(),p_date:$('adv_date').value||null,p_note:null,p_idem:window._advIdem});
- if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(r.error.message)+'</div>';btn.disabled=false;return}
+ if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(errAr(r.error.message))+'</div>';btn.disabled=false;return}
  window._advIdem=null;
  m.innerHTML='<div style="background:#dcfce7;color:#166534;padding:8px;border-radius:8px;margin-top:8px">وصل الإشعار للإدارية: '+esc((r.data&&r.data.text)||'')+'</div>';
  $('adv_amt').value='';$('adv_num').value='';setTimeout(()=>renderFA(),2500);
@@ -965,12 +971,12 @@ async function renderFAArchive(q){
  <h3 class="sec">الشيتات المراجعة (${bs.length})</h3>${bh}<h3 class="sec">السلف المقفولة (${as.length})</h3>${ah}</div>`;
  const el=$('arq');if(el&&q){el.focus();el.setSelectionRange(q.length,q.length)}
 }
-async function restoreBatch(id){const why=prompt('سبب إعادة فتح الشيت (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_batch_restore',{p_code:ME.code,p_pin:window._pin,p_batch:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
-async function reopenAdvance(id){const why=prompt('سبب إعادة فتح السلفة (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_advance_reopen',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderFAArchive();}
+async function restoreBatch(id){const why=prompt('سبب إعادة فتح الشيت (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_batch_restore',{p_code:ME.code,p_pin:window._pin,p_batch:id,p_reason:why});if(r.error){alert('خطأ: '+errAr(r.error.message));return}renderFAArchive();}
+async function reopenAdvance(id){const why=prompt('سبب إعادة فتح السلفة (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('fa_advance_reopen',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+errAr(r.error.message));return}renderFAArchive();}
 async function renderEmpArchive(){
  const r=await sb.rpc('emp_archive_list',{p_code:ME.code,p_pin:window._pin});
  const list=r.data||[];
- const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(r.error.message)+'</div>':(list.length?list.map(x=>reqCard(x,false).replace(/<span class="chip [^"]*">[^<]*<\/span>/,'<span class="chip c-closed">راجعتها المالية</span>')).join(''):'<p class="mut">لا عمليات في الأرشيف بعد. تظهر هنا العمليات التي اعتمدتها الشؤون المالية فقط.</p>');
+ const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(errAr(r.error.message))+'</div>':(list.length?list.map(x=>reqCard(x,false).replace(/<span class="chip [^"]*">[^<]*<\/span>/,'<span class="chip c-closed">راجعتها المالية</span>')).join(''):'<p class="mut">لا عمليات في الأرشيف بعد. تظهر هنا العمليات التي اعتمدتها الشؤون المالية فقط.</p>');
  $('app').innerHTML=`<div class="card"><b>${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)} · ${esc(ME.site)}</span></div>
  <div class="tabs"><button onclick="renderHome()">${ic('home',14)} الرئيسية</button></div>
  <div class="card"><h3 class="sec">${ic('archive',16)} الأرشيف (${list.length})</h3>${html}</div>`;
@@ -980,7 +986,7 @@ async function renderAAArchive(q){
  const r=await sb.rpc('aa_archive_list',{p_code:ME.code,p_pin:window._pin});
  const all=r.data||[];const nq=_norm(q.trim());
  const list=all.filter(x=>!nq||_norm(x.employee_name).includes(nq));
- const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(r.error.message)+'</div>':(list.length?list.map(x=>`<div class="req"><h4>${esc(x.employee_name)} <span class="mut">${esc(x.job_title)} · ${esc(x.site)}</span></h4>
+ const html=r.error?'<div class="err" style="display:block">تعذر تحميل الأرشيف: '+esc(errAr(r.error.message))+'</div>':(list.length?list.map(x=>`<div class="req"><h4>${esc(x.employee_name)} <span class="mut">${esc(x.job_title)} · ${esc(x.site)}</span></h4>
   <p><b>${KINDS[x.kind]||''}</b> <span class="chip c-closed">مقفولة</span>${x.sheet_code?` <span class="chip c-pending" style="direction:ltr">${esc(x.sheet_code)}</span>`:''}</p>
   ${x.category?`<p class="mut">${esc(x.category)}</p>`:''}<p>${esc(x.details||'')}</p>${x.amount?`<p>المبلغ: <b>${fmtMoney(x.amount)}</b></p>`:''}${x.paid_amount?`<p>صُرف: ${fmtMoney(x.paid_amount)} · ${esc(x.paid_method||'')} · ${fmtDate(x.paid_date)}</p>`:''}
   ${attLinks(x.attachments)}<p class="mut">قُدّم في ${new Date(x.created_at).toLocaleString('ar-EG')}</p>
@@ -990,12 +996,12 @@ async function renderAAArchive(q){
  <div class="card"><h3 class="sec">${ic('archive',16)} الأرشيف (${list.length})</h3><input id="arq" value="${esc(q)}" placeholder="ابحث باسم المهندس أو العامل" oninput="clearTimeout(window._arT);window._arT=setTimeout(()=>renderAAArchive(document.getElementById('arq').value),350)">${html}</div>`;
  const el=$('arq');if(el&&q){el.focus();el.setSelectionRange(q.length,q.length)}
 }
-async function restoreAAItem(id){const why=prompt('سبب إعادة العملية للعمل (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('aa_archive_restore',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+r.error.message);return}renderAAArchive();}
+async function restoreAAItem(id){const why=prompt('سبب إعادة العملية للعمل (إلزامي):');if(!why||!why.trim())return;const r=await sb.rpc('aa_archive_restore',{p_code:ME.code,p_pin:window._pin,p_id:id,p_reason:why});if(r.error){alert('خطأ: '+errAr(r.error.message));return}renderAAArchive();}
 async function advDecide(id,action){
  const note=($('ad-'+id)||{}).value||'';
  if(action==='reject'&&!note.trim()){alert('اكتب سبب الرفض');return}
  const r=await sb.rpc('fa_adv_decide',{p_code:ME.code,p_pin:window._pin,p_id:id,p_action:action,p_note:note||null});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderFA();
 }
 async function advPay(id,btn){
@@ -1004,16 +1010,16 @@ async function advPay(id,btn){
  if(!num){m.innerHTML='<div class="err" style="display:block">اكتب رقم المحفظة أو إنستاباي</div>';return}
  btn.disabled=true;window._payIdem=window._payIdem||{};if(!window._payIdem[id])window._payIdem[id]=crypto.randomUUID();
  const r=await sb.rpc('fa_advance_pay',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_amount:amt,p_method:$('ap-m-'+id).value,p_number:num,p_date:$('ap-d-'+id).value||null,p_note:null,p_idem:window._payIdem[id]});
- if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(r.error.message)+'</div>';btn.disabled=false;return}
+ if(r.error){m.innerHTML='<div class="err" style="display:block">'+esc(errAr(r.error.message))+'</div>';btn.disabled=false;return}
  m.innerHTML='<div style="background:#dcfce7;color:#166534;padding:8px;border-radius:8px;margin-top:8px">تم تسجيل التحويل وإخطار الإدارية</div>';
  setTimeout(()=>renderFA(),1500);
 }
-async function closeAdvance(id){const r=await sb.rpc('fa_advance_close',{p_code:ME.code,p_pin:window._pin,p_id:id});if(r.error){alert('خطأ: '+r.error.message);return}renderFA();}
+async function closeAdvance(id){const r=await sb.rpc('fa_advance_close',{p_code:ME.code,p_pin:window._pin,p_id:id});if(r.error){alert('خطأ: '+errAr(r.error.message));return}renderFA();}
 async function reviewBatch(id,action){
  const note=($('bn-'+id)||{}).value||'';
- if(action==='return'&&!note.trim()){alert('اكتب سبب الإرجاع');return}
+ if(action==='return'&&!note.trim()){flagField($('bn-'+id),'اكتب سبب إعادة المراجعة هنا أولًا');return}
  const r=await sb.rpc('fa_batch_review',{p_code:ME.code,p_pin:window._pin,p_batch:id,p_action:action,p_note:note||null});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderFA();
 }
 async function renderFAAlerts(){
@@ -1028,7 +1034,7 @@ async function renderFAAlerts(){
 async function faAct(id,action){
  const note=($('fn-'+id)||{}).value||'';
  const r=await sb.rpc('fa_decide',{p_code:ME.code,p_pin:window._pin,p_request_id:id,p_action:action,p_note:note||null});
- if(r.error){alert('خطأ: '+r.error.message);return}
+ if(r.error){alert('خطأ: '+errAr(r.error.message));return}
  renderFA();
 }
 
