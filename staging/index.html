@@ -95,10 +95,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:tex
     <div><h1>BGC-HUB</h1><small>بوابة الشركة — نسخة تجريبية</small></div>
   </div>
   <div id="app"></div>
-  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.2-stg · 27-11-2026</div>
+  <div id="verlbl" style="text-align:center;color:#8a8a8a;font-size:11px;margin:14px 0 24px">BGC-HUB · نسخة تجريبية للأمان 4.3-stg · 27-11-2026</div>
 </div>
 <script>
-const APP_VER='4.2-stg · 27-11-2026';
+const APP_VER='4.3-stg · 27-11-2026';
 const SB_URL='https://caavuoxlnoqlqsabkqbd.supabase.co';
 const SB_KEY='sb_publishable_dI3cQZjgS2AN321tgGPy6A_G-1dU7v3';
 const sb0=supabase.createClient(SB_URL,SB_KEY,{db:{schema:'stg'}});
@@ -310,10 +310,13 @@ const PAYM={wallet:'محفظة',instapay:'انستاباي',bank:'تحويل ب�
 const payLabel=m=>PAYM[m]||m||'';
 const maskNum=v=>{v=String(v||'');return v.length>4?'••••'+v.slice(-4):v};
 async function revealPayout(id,btn){const r=await sb.rpc('reveal_payout',{p_code:ME.code,p_pin:window._pin,p_request_id:id});if(r.error){alert('خطأ: '+r.error.message);return}const el=btn.parentNode.querySelector('b.pn');el.textContent=r.data;btn.remove();}
+function copyTxt(btn){const v=btn.dataset.v||'';const done=()=>{const o=btn.textContent;btn.textContent='✅ تم النسخ';setTimeout(()=>btn.textContent=o,1500)};
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(v).then(done,()=>fb())}else fb();
+ function fb(){const t=document.createElement('textarea');t.value=v;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy');done()}catch(e){prompt('انسخ الرقم:',v)}t.remove()}}
 function payoutLine(r){
  if(!MONEYK(r.kind))return '';
  if(!r.payout_method)return '<p style="color:#b91c1c;font-weight:700">⚠ لم تُحدَّد طريقة الاستلام</p>';
- return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?(ME&&ME.role!=='employee'?` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(ME.role==='aa'?r.payout_account:maskNum(r.payout_account))}</b>`:` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`):''}</p>`;
+ return `<p>طريقة الاستلام: <b>${payLabel(r.payout_method)}</b>${r.payout_account?(ME&&ME.role!=='employee'?` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(ME.role==='aa'?r.payout_account:maskNum(r.payout_account))}</b>${ME.role==='aa'?` <button class="btn ghost sm" data-v="${esc(r.payout_account)}" onclick="copyTxt(this)">📋 نسخ</button>`:''}`:` · <b class="pn" dir="ltr" style="unicode-bidi:embed">${esc(r.payout_account)}</b>`):''}</p>`;
 }
 function missingAtt(r){
  const none=!r.attachments||!r.attachments.length;
@@ -655,7 +658,7 @@ async function loadAAApproved(){
    ${payoutLine(r)}
    ${r.status==='approved'?`<div style="border:1px dashed #ccc;border-radius:10px;padding:8px;margin-top:6px">
     <div class="row"><input id="pm-${r.id}" placeholder="المبلغ الفعلي" type="number" inputmode="decimal" style="width:110px"><input id="pdt-${r.id}" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
-    <div class="row"><select id="pmd-${r.id}">${[['كاش','cash'],['فودافون كاش',''],['محفظة','wallet'],['تحويل بنكي','bank'],['انستاباي','instapay']].map(o=>`<option${o[1]&&o[1]===r.payout_method?' selected':''}>${o[0]}</option>`).join('')}</select><input id="prc-${r.id}" placeholder="رقم المستلم" inputmode="tel" value="${esc(r.payout_account||'')}" style="width:140px"></div>
+    <div class="row"><select id="pmd-${r.id}">${[['كاش','cash'],['فودافون كاش',''],['محفظة','wallet'],['تحويل بنكي','bank'],['انستاباي','instapay']].map(o=>`<option${o[1]&&o[1]===r.payout_method?' selected':''}>${o[0]}</option>`).join('')}</select><input id="prc-${r.id}" placeholder="رقم المستلم" inputmode="tel" value="${esc(r.payout_account||'')}" style="width:140px">${r.payout_account?`<button class="btn ghost sm" data-v="${esc(r.payout_account)}" onclick="copyTxt(this)">📋 نسخ</button>`:''}</div>
     <div class="row"><label class="mut" style="font-size:12px">إثبات الصرف:</label><input id="ppf-${r.id}" type="file" accept="image/*,.pdf" style="font-size:12px"></div>
     <button class="btn ok sm" id="payb-${r.id}" onclick="aaPay('${r.id}')">💸 تسجيل صرف</button></div>`
    :`<p class="mut">صُرف: ${fmtMoney(r.paid_amount)} · ${esc(r.paid_method||'')} · ${fmtDate(r.paid_date)}${r.paid_recipient?` · المستلم ${esc(r.paid_recipient)}`:''}</p>${r.paid_proof&&r.paid_proof.length?attLinks(r.paid_proof):''}<p class="mut">سيدخل في الشيت القادم للشئون المالية</p>`}
@@ -858,6 +861,7 @@ async function loadReports(){
 }
 function exportXlsx(){
  const rows=repFiltered().map(r=>({'الموظف':r.employee_name,'الوظيفة':r.job_title,'الموقع':r.site,'النوع':KINDS[r.kind],'الحالة':STATUS[r.status][0],'المبلغ':r.amount,'طريقة الاستلام (من الطلب)':payLabel(r.payout_method),'رقم/عنوان الاستلام':(r.payout_account?maskNum(r.payout_account):'')||(r.payout_method==='cash'?'—':''),'المدفوع':r.paid_amount,'طريقة الصرف':r.paid_method||'','رقم المستلم':r.paid_recipient||'','تاريخ المستند':r.request_date||'','تاريخ التقديم':new Date(r.created_at).toLocaleDateString('ar-EG'),'التفاصيل':r.details,...(window._batchCode?{'كود الشيت':window._batchCode}:{})}));
+ if(window._batchCode){const tot=rows.reduce((t,x)=>t+Number(x['المدفوع']||0),0);rows.push({});rows.push({'الموظف':'الإجمالي','المدفوع':tot});if(window._batchAdv!=null){rows.push({'الموظف':'قيمة السلفة','المدفوع':Number(window._batchAdv)});rows.push({'الموظف':'الفرق','المدفوع':tot-Number(window._batchAdv)});}}
  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,ws,'الطلبات');XLSX.writeFile(wb,window._batchCode?('bgc-hub-'+window._batchCode+'.xlsx'):'bgc-hub-requests.xlsx');
 }
@@ -867,7 +871,7 @@ async function renderFA(){
  const [q,bq,aq,arq]=await Promise.all([sb.rpc('fa_queue',{p_code:ME.code,p_pin:window._pin}),sb.rpc('fa_batches',{p_code:ME.code,p_pin:window._pin}),sb.rpc('fa_advances_list',{p_code:ME.code,p_pin:window._pin}),sb.rpc('adv_list',{p_code:ME.code,p_pin:window._pin})]);
  const list=(q.data&&q.data.queue)||[];
  window._batches=bq.data||[];const _work=window._batches.map((b,i)=>[b,i]).filter(([b])=>!b.archived);
- const BST={pending:['بانتظار المراجعة','c-awaiting_fa'],reviewed:['تمت المراجعة','c-closed'],returned:['أُعيدت للإدارية','c-returned']};
+ const BST={pending:['بانتظار المراجعة','c-awaiting_fa'],reviewed:['تم اعتماد الصرف','c-closed'],returned:['أُعيدت للإدارية','c-returned']};
  window._allAdv=aq.data||[];const advs=window._allAdv.filter(a=>a.status==='open');
  const advHtml=advs.length?advs.map(a=>`<div class="req"><h4>${fmtMoney(a.amount)} <span class="chip ${a.status==='open'?'c-pending':'c-closed'}">${a.status==='open'?'مفتوحة':'مقفولة'}</span></h4><p class="mut">${esc(a.method||'')} · ${esc(a.number||'')} · ${fmtDate(a.date)}</p>${a.status==='open'?`<button class="btn ghost sm" onclick="closeAdvance('${a.id}')">إقفال السلفة</button>`:''}</div>`).join(''):'<p class="mut">لا سلف بعد.</p>';
  const td0=new Date().toISOString().slice(0,10);const ars=arq.data||[];
@@ -883,7 +887,7 @@ async function renderFA(){
   ${b.status==='returned'&&b.note?`<p class="mut">سبب الإرجاع: ${esc(b.note)}</p>`:''}
   ${b.advance_amount!=null?`<p>السلفة: <b>${fmtMoney(b.advance_amount)}</b> · الإجمالي: <b>${fmtMoney(b.total)}</b> · ${Number(b.total)===Number(b.advance_amount)?'<span style="color:#166534;font-weight:800">مطابق ✅</span>':'<span style="color:#b91c1c;font-weight:800">الفرق '+(Number(b.total)-Number(b.advance_amount))+' ج.م ⚠ راجع الإدارية</span>'}</p>`:'<p class="mut">لا توجد سلفة مرتبطة بهذا الشيت</p>'}
   <div class="row"><button class="btn ghost sm" onclick="openBatch(${i})">فتح Excel / PDF</button></div>
-  ${b.status==='pending'?`<input id="bn-${b.id}" placeholder="سبب الإرجاع (إلزامي عند الإرجاع)"><div class="row">${b.advance_amount!=null&&Number(b.total)!==Number(b.advance_amount)?'':`<button class="btn ok sm" onclick="reviewBatch('${b.id}','reviewed')">تمت المراجعة</button>`}<button class="btn ret sm" onclick="reviewBatch('${b.id}','return')">إرجاع</button></div>`:''}</div>`).join(''):'<p class="mut">لا شيتات للمراجعة بعد.</p>';
+  ${b.status==='pending'?`<input id="bn-${b.id}" placeholder="سبب إعادة المراجعة (إلزامي)"><div class="row">${b.advance_amount!=null&&Number(b.total)!==Number(b.advance_amount)?'':`<button class="btn ok sm" onclick="reviewBatch('${b.id}','reviewed')">✅ اعتماد الصرف</button>`}<button class="btn ret sm" onclick="reviewBatch('${b.id}','return')">↩️ إعادة المراجعة</button></div>`:''}</div>`).join(''):'<p class="mut">لا شيتات للمراجعة بعد.</p>';
  const single='';
  $('app').innerHTML=`
  <div class="card"><b>${ic('money',16)} ${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)}</span></div>
@@ -912,12 +916,14 @@ async function aaSendClosed(btn){
  setTimeout(()=>renderAA('queue'),2500);
 }
 async function openBatch(i){
- const b=window._batches[i];_rep=b.requests||[];window._batchCode=b.code;
+ const b=window._batches[i];_rep=b.requests||[];window._batchCode=b.code;window._batchAdv=b.advance_amount;
  $('app').innerHTML=`<div class="card"><b>${ic('money',16)} ${esc(ME.name)}</b> <span class="mut">${esc(ME.job_title)}</span></div>
  <div class="tabs"><button onclick="${b.archived?'renderFAArchive()':'renderFA()'}">${ic('home',14)} رجوع</button></div>
  <div class="card"><h3 class="sec dochead">شيت ${esc(b.code||'')} — ${new Date(b.created_at).toLocaleDateString('ar-EG')}</h3>
  <div class="row no-print"><button class="btn sm" onclick="exportXlsx()">⬇️ Excel</button><button class="btn ghost sm" onclick="window.print()">🖨️ PDF (المستندات فقط)</button></div><div id="repTable" class="docs-only" style="margin-top:10px"></div></div>`;
  renderRepTable();document.querySelector('.print-det').classList.add('show');
+ {const tot=(b.requests||[]).reduce((t,x)=>t+Number(x.paid_amount||0),0);const ad=b.advance_amount;const df=ad!=null?tot-Number(ad):null;
+ $('repTable').insertAdjacentHTML('beforeend',`<div class="req" style="border:2px solid #333"><p>إجمالي المصروف: <b>${fmtMoney(tot)}</b></p>${ad!=null?`<p>قيمة السلفة: <b>${fmtMoney(ad)}</b></p><p>الفرق: <b style="color:${df===0?'#166534':'#b91c1c'}">${df===0?'مطابق ✅':fmtMoney(df)}</b></p>`:'<p class="mut">لا توجد سلفة مرتبطة</p>'}</div>`);}
 }
 
 function advanceFields(){
